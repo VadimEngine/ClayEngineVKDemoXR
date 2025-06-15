@@ -1,37 +1,39 @@
+// clay
+#include <clay/entity/render/ModelRenderable.h>
 // project
 #include "application/DemoAppXR.h"
 // class
 #include "FarmScene.h"
 
-FarmScene::FarmScene(clay::IApp& app)
+FarmScene::FarmScene(clay::BaseApp& app)
     : clay::BaseScene(app),
       mCameraController_(mpFocusCamera_) {}
 
-FarmScene::~FarmScene() {
-
-}
+FarmScene::~FarmScene() {}
 
 void FarmScene::initialize() {
     assembleResources();
     {
         // left
         auto* handLeftRenderable = new clay::ModelRenderable(
-            ((DemoAppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveLeft")
+            mApp_.getResources().getResource<clay::Model>("GloveLeft")
         );
         handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mLeftHandEntity_.addRenderable(handLeftRenderable);
 
         // right
         auto* handRightRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveRight")
+            mApp_.getResources().getResource<clay::Model>("GloveRight")
         );
         handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mRightHandEntity_.addRenderable(handRightRenderable);
     }
     // imgui plane
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("ImguiPlane")
+            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
         );
         mPlaneEntity_.addRenderable(modelRenderable);
         mPlaneEntity_.setPosition({2,0,0});
@@ -44,11 +46,13 @@ void FarmScene::initialize() {
             mpResources_->getResource<clay::Model>("TreeTop")
         );
         treeTopRenderable->setPosition({0,1,0});
+        treeTopRenderable->setColor({0.0f, 1.0f, 0.0f, 1.0f});
 
         auto* treeTrunkRenderable = new clay::ModelRenderable(
             mpResources_->getResource<clay::Model>("TreeTrunk")
         );
         treeTrunkRenderable->setScale({.1, 2, .1});
+        treeTrunkRenderable->setColor({0.239, 0.141, 0.071, 1.0f});
 
         mTreeEntity_.addRenderable(treeTopRenderable);
         mTreeEntity_.addRenderable(treeTrunkRenderable);
@@ -61,6 +65,7 @@ void FarmScene::initialize() {
         auto* renderable = new clay::ModelRenderable(
             mpResources_->getResource<clay::Model>("GrassFloor")
         );
+        renderable->setColor({0.0f, 1.0f, 0.0f, 1.0f});
         mFloorEntity_.addRenderable(renderable);
         mFloorEntity_.setPosition({0,-1,0});
         mFloorEntity_.setScale({50,50,50});
@@ -68,7 +73,7 @@ void FarmScene::initialize() {
     // skybox
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("CloudySkybox")
+            mApp_.getResources().getResource<clay::Model>("CloudySkybox")
         );
         mSkyBoxEntity.addRenderable(modelRenderable);
         mSkyBoxEntity.setPosition({0,0,0});
@@ -123,21 +128,6 @@ void FarmScene::update(float dt) {
 }
 
 void FarmScene::render(VkCommandBuffer cmdBuffer) {
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("CloudySky")->mUniformBuffersMapped_[0],
-        &cameraConstants2, // headlocked
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("ImguiFrame")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
     mSkyBoxEntity.render(cmdBuffer);
     mTreeEntity_.render(cmdBuffer);
     mFloorEntity_.render(cmdBuffer);
@@ -335,32 +325,34 @@ void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
 }
 
 void FarmScene::assembleResources() {
-    mpResources_ = new clay::Resources(*mApp_.mpGraphicsContext_);
+    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
 
     // create leaves model
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mApp_.mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Mesh>("Sphere"));
-        pRenderable->mMaterials_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat"));
-        pRenderable->mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
-
+        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
+        pRenderable->addElement({
+            mApp_.getResources().getResource<clay::Mesh>("Sphere"),
+            mApp_.getResources().getResource<clay::Material>("Flat"),
+        });
         mpResources_->addResource<clay::Model>(std::move(pRenderable), "TreeTop");
     }
     // create trunk model
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mApp_.mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Mesh>("Cube"));
-        pRenderable->mMaterials_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat"));
-        pRenderable->mColor_ = {0.239, 0.141, 0.071, 1.0f};
+        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
+        pRenderable->addElement({
+            mApp_.getResources().getResource<clay::Mesh>("Cube"),
+            mApp_.getResources().getResource<clay::Material>("Flat"),
+        });
 
         mpResources_->addResource<clay::Model>(std::move(pRenderable), "TreeTrunk");
     }
     // floor model
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mApp_.mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Mesh>("Plane"));
-        pRenderable->mMaterials_.push_back(((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat"));
-        pRenderable->mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
+        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
+        pRenderable->addElement({
+            mApp_.getResources().getResource<clay::Mesh>("Plane"),
+            mApp_.getResources().getResource<clay::Material>("Flat"),
+        });
 
         mpResources_->addResource<clay::Model>(std::move(pRenderable), "GrassFloor");
     }

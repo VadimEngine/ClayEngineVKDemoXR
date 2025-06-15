@@ -4,7 +4,7 @@
 #include "application/scenes/farm/FarmScene.h"
 
 
-DemoAppXR::DemoAppXR(android_app* pAndroidApp) : AppXR(pAndroidApp) {
+DemoAppXR::DemoAppXR(clay::XRSystem* pXRSystem) : AppXR(pXRSystem) {
 
 }
 
@@ -15,60 +15,109 @@ void DemoAppXR::initialize() {
 void DemoAppXR::CreateResources() {
     AppXR::CreateResources();
 
+    // shaders
+    auto textureVertexFileData = loadFileToMemory_XR("shaders/Texture.vert.spv");
+    VkShaderModule textureVertexShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_VERTEX_BIT, textureVertexFileData.data.get(), textureVertexFileData.size}
+    );
+    auto textureFragmentFileData = loadFileToMemory_XR("shaders/Texture.frag.spv");
+    VkShaderModule textureFragmentShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_FRAGMENT_BIT, textureFragmentFileData.data.get(), textureFragmentFileData.size}
+    );
+
+    auto flatVertexFileData = loadFileToMemory_XR("shaders/Flat.vert.spv");
+    VkShaderModule flatVertexShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_VERTEX_BIT, flatVertexFileData.data.get(), flatVertexFileData.size}
+    );
+    auto flatFragmentFileData = loadFileToMemory_XR("shaders/Flat.frag.spv");
+    VkShaderModule flatFragmentShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_FRAGMENT_BIT, flatFragmentFileData.data.get(), flatFragmentFileData.size}
+    );
+
+    auto solidVertexFileData = loadFileToMemory_XR("shaders/Solid.vert.spv");
+    VkShaderModule solidVertexShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_VERTEX_BIT, solidVertexFileData.data.get(), solidVertexFileData.size}
+    );
+    auto solidFragmentFileData = loadFileToMemory_XR("shaders/Solid.frag.spv");
+    VkShaderModule solidFragmentShader = mpGraphicsContext_->createShader(
+        {VK_SHADER_STAGE_FRAGMENT_BIT, solidFragmentFileData.data.get(), solidFragmentFileData.size}
+    );
+
     {
         // load font
         auto fontData = loadFileToMemory_XR("fonts/runescape_uf.ttf");
         auto vertexData = loadFileToMemory_XR("shaders/Text.vert.spv");
         auto fragmentData = loadFileToMemory_XR("shaders/Text.frag.spv");
 
-        mpResources_->addResource<clay::Font>(
-            std::make_unique<clay::Font>(*mpGraphicsContext_, fontData, vertexData, fragmentData),
+        mResources_.addResource<clay::Font>(
+            std::make_unique<clay::Font>(
+                *mpGraphicsContext_, fontData, vertexData, fragmentData, *mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_
+            ),
             "Runescape"
         );
     }
 
-    mpResources_->loadResource<clay::Audio>({"audio/beep_deep_1.wav"}, "DeepBeep");
+    mResources_.loadResource<clay::Audio>({"audio/beep_deep_1.wav"}, "DeepBeep");
 
-    // create default sampler
-    mpResources_->addResource<VkSampler>(
-        std::make_unique<VkSampler>(mpGraphicsContext_->createSampler()),
-        "Default"
-    );
+    {
+        // default sampler
+        VkSampler sampler;
+        VkSamplerCreateInfo samplerInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_NEAREST,
+            .minFilter = VK_FILTER_NEAREST,
+            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            .addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+            .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+            .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+            .mipLodBias = 0.0f,
+            .anisotropyEnable = VK_FALSE,
+            .maxAnisotropy = 1,
+            .compareEnable = VK_FALSE,
+            .compareOp = VK_COMPARE_OP_ALWAYS,
+            .minLod = 0.0f,
+            .maxLod = 0.0f,
+            .borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+            .unnormalizedCoordinates = VK_FALSE,
+        };
+
+        if (vkCreateSampler(mpGraphicsContext_->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture sampler!");
+        }
+        mResources_.addResource<VkSampler>(
+            std::make_unique<VkSampler>(sampler), "Default"
+        );
+    }
     {
         // linear sampler
         VkSampler linearSampler;
 
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(mpGraphicsContext_->mPhysicalDevice_, &properties);
+        VkSamplerCreateInfo samplerInfo{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .mipLodBias = 0.0f,
+            .anisotropyEnable = VK_TRUE,
+            .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+            .compareEnable = VK_FALSE,
+            .compareOp = VK_COMPARE_OP_ALWAYS,
+            .minLod = 0.0f,
+            .maxLod = VK_LOD_CLAMP_NONE,
+            .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+            .unnormalizedCoordinates = VK_FALSE,
+        };
 
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-
-        // Use linear filtering for smoother texture sampling
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        // Wrapping mode – repeat or clamp depending on texture type
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        // Enable anisotropic filtering
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK; // Only used with CLAMP_TO_BORDER
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        // Enable mipmapping
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = VK_LOD_CLAMP_NONE; // Or set based on mip levels
-        samplerInfo.mipLodBias = 0.0f;
-
-        if (vkCreateSampler( mpGraphicsContext_->mDevice_, &samplerInfo, nullptr, &linearSampler) != VK_SUCCESS) {
+        if (vkCreateSampler( mpGraphicsContext_->getDevice(), &samplerInfo, nullptr, &linearSampler) != VK_SUCCESS) {
             throw std::runtime_error("failed to create texture sampler!");
         }
 
-        mpResources_->addResource<VkSampler>(
+        mResources_.addResource<VkSampler>(
             std::make_unique<VkSampler>(linearSampler),
             "Linear"
         );
@@ -78,36 +127,36 @@ void DemoAppXR::CreateResources() {
         auto vImageData = loadImageFileToMemory_XR("textures/SandboxPreview.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Default"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Default"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "SandboxPreview");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "SandboxPreview");
     }
     // SpacePreview Textures
     {
         auto vImageData = loadImageFileToMemory_XR("textures/SpacePreview.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Default"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Default"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "SpacePreview");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "SpacePreview");
     }
     // FarmPreview Textures
     {
         auto vImageData = loadImageFileToMemory_XR("textures/FarmPreview.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Default"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Default"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "FarmPreview");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "FarmPreview");
     }
     // VImage Textures
     {
         auto vImageData = loadImageFileToMemory_XR("textures/V.png");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Default"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Default"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "VTexture");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "VTexture");
     }
     // solid texture
     {
@@ -125,142 +174,98 @@ void DemoAppXR::CreateResources() {
 
         auto* pSolidTexture = new clay::Texture(*mpGraphicsContext_);
         pSolidTexture->initialize(singleRGBA);
-        pSolidTexture->setSampler(*mpResources_->getResource<VkSampler>("Default"));
+        pSolidTexture->setSampler(*mResources_.getResource<VkSampler>("Default"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pSolidTexture), "SolidTexture");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pSolidTexture), "SolidTexture");
     }
     // Sun texture
     {
         auto vImageData = loadImageFileToMemory_XR("textures/sunmap.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Linear"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Linear"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "Sun");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "Sun");
     }
     // Moon texture
     {
         auto vImageData = loadImageFileToMemory_XR("textures/2k_moon.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Linear"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Linear"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "Moon");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "Moon");
     }
     // Earth texture
     {
         auto vImageData = loadImageFileToMemory_XR("textures/earthmap1k.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Linear"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Linear"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "Earth");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "Earth");
     }
     // Stars
     {
         auto vImageData = loadImageFileToMemory_XR("textures/8k_stars_milky_way.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Linear"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Linear"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "Stars");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "Stars");
     }
     // Cloudy sky
     {
         auto vImageData = loadImageFileToMemory_XR("textures/CloudSky.jpg");
         auto* pVTexture = new clay::Texture(*mpGraphicsContext_);
         pVTexture->initialize(vImageData);
-        pVTexture->setSampler(*mpResources_->getResource<VkSampler>("Linear"));
+        pVTexture->setSampler(*mResources_.getResource<VkSampler>("Linear"));
 
-        mpResources_->addResource(std::unique_ptr<clay::Texture>(pVTexture), "CloudySky");
+        mResources_.addResource(std::unique_ptr<clay::Texture>(pVTexture), "CloudySky");
     }
     // sphere mesh
     {
-        mpResources_->loadResource<clay::Mesh>({"models/Sphere.obj"}, "Sphere");
+        mResources_.loadResource<clay::Mesh>({"models/Sphere.obj"}, "Sphere");
     }
     // cube mesh
     {
-        mpResources_->loadResource<clay::Mesh>({"models/Cube.obj"}, "Cube");
+        mResources_.loadResource<clay::Mesh>({"models/Cube.obj"}, "Cube");
     }
     // plane mesh
     {
-        mpResources_->loadResource<clay::Mesh>({"models/Plane.obj"}, "Plane");
+        mResources_.loadResource<clay::Mesh>({"models/Plane.obj"}, "Plane");
     }
     // hand meshes
     {
-        mpResources_->loadResource<clay::Mesh>({"models/GloveLeft.obj"}, "GloveLeft");
-        mpResources_->loadResource<clay::Mesh>({"models/GloveRight.obj"}, "GloveRight");
+        mResources_.loadResource<clay::Mesh>({"models/GloveLeft.obj"}, "GloveLeft");
+        mResources_.loadResource<clay::Mesh>({"models/GloveRight.obj"}, "GloveRight");
     }
 
     // pipeline (TextureDepth)
     {
-        // shaders
-        auto vertexFileData = loadFileToMemory_XR("shaders/Texture.vert.spv");
-        VkShaderModule vertexShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_VERTEX_BIT, vertexFileData.data.get(), vertexFileData.size}
-        );
-        auto fragmentFileData = loadFileToMemory_XR("shaders/Texture.frag.spv");
-        VkShaderModule fragmentShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_FRAGMENT_BIT, fragmentFileData.data.get(), fragmentFileData.size}
-        );
-
         clay::PipelineResource::PipelineConfig pipelineConfig{
             .graphicsContext = *mpGraphicsContext_
         };
 
-        pipelineConfig.shaderStages = {
+        pipelineConfig.pipelineLayoutInfo.shaderStages = {
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertexShader,
+                .module = textureVertexShader,
                 .pName = "main"
             },
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragmentShader,
+                .module = textureFragmentShader,
                 .pName = "main"
             }
         };
         auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
-        pipelineConfig.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
-        pipelineConfig.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
+        pipelineConfig.pipelineLayoutInfo.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
+        pipelineConfig.pipelineLayoutInfo.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
 
-        pipelineConfig.pushConstants = {
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = 0,
-                .size = sizeof(glm::mat4)
-            },
-            {
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .offset = 64,
-                .size = sizeof(glm::vec4)
-            }
-        };
-        pipelineConfig.bufferCreateInfos = {
-            {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
-                .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
-        };
-
-        pipelineConfig.imageCreateInfos = {
-            {
-                .binding = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = nullptr,
-            }
-        };
-
-        pipelineConfig.depthStencilState = {
+        pipelineConfig.pipelineLayoutInfo.depthStencilState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = VK_TRUE,
             .depthWriteEnable = VK_TRUE,
@@ -269,7 +274,7 @@ void DemoAppXR::CreateResources() {
             .stencilTestEnable = VK_FALSE,
         };
 
-        pipelineConfig.rasterizerState = {
+        pipelineConfig.pipelineLayoutInfo.rasterizerState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -280,79 +285,66 @@ void DemoAppXR::CreateResources() {
             .lineWidth = 1.0f,
         };
 
-        mpResources_->addResource<clay::PipelineResource>(
-            std::make_unique<clay::PipelineResource>(pipelineConfig),
-            "TextureDepth"
-        );
-        // TODO delete after all pipelines are done with this
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, vertexShader, nullptr);
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, fragmentShader, nullptr);
-    }
-    // pipeline (TextureDepthStencil)
-    {
-        // shaders
-        auto vertexFileData = loadFileToMemory_XR("shaders/Texture.vert.spv");
-        VkShaderModule vertexShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_VERTEX_BIT, vertexFileData.data.get(), vertexFileData.size}
-        );
-        auto fragmentFileData = loadFileToMemory_XR("shaders/Texture.frag.spv");
-        VkShaderModule fragmentShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_FRAGMENT_BIT, fragmentFileData.data.get(), fragmentFileData.size}
-        );
-
-        clay::PipelineResource::PipelineConfig pipelineConfig{
-            .graphicsContext = *mpGraphicsContext_
-        };
-
-        pipelineConfig.shaderStages = {
+        pipelineConfig.pipelineLayoutInfo.pushConstants = {
             {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertexShader,
-                .pName = "main"
-            },
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragmentShader,
-                .pName = "main"
-            }
-        };
-        auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
-        pipelineConfig.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
-        pipelineConfig.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
-
-        pipelineConfig.pushConstants = {
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 .offset = 0,
-                .size = sizeof(glm::mat4)
-            },
-            {
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .offset = 64,
-                .size = sizeof(glm::vec4)
+                .size = sizeof(glm::mat4) + sizeof(glm::vec4)
             }
         };
-        pipelineConfig.bufferCreateInfos = {
-            {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
-                .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
-        };
 
-        pipelineConfig.imageCreateInfos = {
+        pipelineConfig.bindingLayoutInfo.bindings = {
+            {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
+            },
             {
                 .binding = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = nullptr,
+                .pImmutableSamplers = nullptr
+            }
+        };
+
+        mResources_.addResource<clay::PipelineResource>(
+            std::make_unique<clay::PipelineResource>(pipelineConfig),
+            "TextureDepth"
+        );
+
+    }
+    // pipeline (TextureDepthStencil)
+    {
+        clay::PipelineResource::PipelineConfig pipelineConfig{
+            .graphicsContext = *mpGraphicsContext_
+        };
+
+        pipelineConfig.pipelineLayoutInfo.shaderStages = {
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                .module = textureVertexShader,
+                .pName = "main"
+            },
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .module = textureFragmentShader,
+                .pName = "main"
+            }
+        };
+        auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
+        pipelineConfig.pipelineLayoutInfo.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
+        pipelineConfig.pipelineLayoutInfo.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
+
+        pipelineConfig.pipelineLayoutInfo.pushConstants = {
+            {
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = sizeof(glm::mat4) + sizeof(glm::vec4)
             }
         };
 
@@ -365,18 +357,9 @@ void DemoAppXR::CreateResources() {
         stencilState.writeMask = 0xFF;
         stencilState.reference = 0xFF; // Set at draw time via vkCmdSetStencilReference if dynamic
 
-        pipelineConfig.depthStencilState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-            .depthTestEnable = VK_TRUE,
-            .depthWriteEnable = VK_TRUE,
-            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
-            .depthBoundsTestEnable = VK_FALSE,
-            .stencilTestEnable = VK_TRUE,
-            .front = stencilState,
-            .back = stencilState
-        };
 
-        pipelineConfig.rasterizerState = {
+
+        pipelineConfig.pipelineLayoutInfo.rasterizerState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -387,83 +370,64 @@ void DemoAppXR::CreateResources() {
             .lineWidth = 1.0f,
         };
 
-        mpResources_->addResource<clay::PipelineResource>(
-            std::make_unique<clay::PipelineResource>(pipelineConfig),
-            "TextureDepthStencil"
-        );
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, vertexShader, nullptr);
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, fragmentShader, nullptr);
-    }
-    // pipeline (TextureNoDepth)
-    {
-        // shaders
-        auto vertexFileData = loadFileToMemory_XR("shaders/Texture.vert.spv");
-        VkShaderModule vertexShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_VERTEX_BIT, vertexFileData.data.get(), vertexFileData.size}
-        );
-        auto fragmentFileData = loadFileToMemory_XR("shaders/Texture.frag.spv");
-        VkShaderModule fragmentShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_FRAGMENT_BIT, fragmentFileData.data.get(), fragmentFileData.size}
-        );
-
-        clay::PipelineResource::PipelineConfig pipelineConfig{
-            .graphicsContext = *mpGraphicsContext_
+        pipelineConfig.pipelineLayoutInfo.depthStencilState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+            .depthBoundsTestEnable = VK_FALSE,
+            .stencilTestEnable = VK_TRUE,
+            .front = stencilState,
+            .back = stencilState
         };
 
-        pipelineConfig.shaderStages = {
+        pipelineConfig.bindingLayoutInfo.bindings = {
             {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertexShader,
-                .pName = "main"
-            },
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragmentShader,
-                .pName = "main"
-            }
-        };
-        auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
-        pipelineConfig.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
-        pipelineConfig.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
-
-        pipelineConfig.pushConstants = {
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = 0,
-                .size = sizeof(glm::mat4)
-            },
-            {
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .offset = 64,
-                .size = sizeof(glm::vec4)
-            }
-        };
-
-        pipelineConfig.bufferCreateInfos = {
-            {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
-                .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .binding = 0,
                 .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
             },
-        };
-
-        pipelineConfig.imageCreateInfos = {
             {
                 .binding = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = nullptr,
+                .pImmutableSamplers = nullptr
             }
         };
 
-        pipelineConfig.depthStencilState = {
+        mResources_.addResource<clay::PipelineResource>(
+            std::make_unique<clay::PipelineResource>(pipelineConfig),
+            "TextureDepthStencil"
+        );
+    }
+    // pipeline (TextureNoDepth)
+    {
+        clay::PipelineResource::PipelineConfig pipelineConfig{
+            .graphicsContext = *mpGraphicsContext_
+        };
+
+        pipelineConfig.pipelineLayoutInfo.shaderStages = {
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                .module = textureVertexShader,
+                .pName = "main"
+            },
+            {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .module = textureFragmentShader,
+                .pName = "main"
+            }
+        };
+        auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
+        pipelineConfig.pipelineLayoutInfo.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
+        pipelineConfig.pipelineLayoutInfo.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
+
+        pipelineConfig.pipelineLayoutInfo.depthStencilState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = VK_FALSE,
             .depthWriteEnable = VK_FALSE,
@@ -472,7 +436,7 @@ void DemoAppXR::CreateResources() {
             .stencilTestEnable = VK_FALSE,
         };
 
-        pipelineConfig.rasterizerState = {
+        pipelineConfig.pipelineLayoutInfo.rasterizerState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -483,73 +447,61 @@ void DemoAppXR::CreateResources() {
             .lineWidth = 1.0f,
         };
 
-        mpResources_->addResource<clay::PipelineResource>(
+        pipelineConfig.pipelineLayoutInfo.pushConstants = {
+            {
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = sizeof(glm::mat4) + sizeof(glm::vec4)
+            }
+        };
+
+        pipelineConfig.bindingLayoutInfo.bindings = {
+            {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
+            },
+            {
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .pImmutableSamplers = nullptr
+            }
+        };
+
+        mResources_.addResource<clay::PipelineResource>(
             std::make_unique<clay::PipelineResource>(pipelineConfig),
             "TextureNoDepth"
         );
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, vertexShader, nullptr);
-        vkDestroyShaderModule(mpGraphicsContext_->mDevice_, fragmentShader, nullptr);
     }
     // pipeline (flat)
     {
-        auto vertexFileData = loadFileToMemory_XR("shaders/Flat.vert.spv");
-        VkShaderModule vertexShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_VERTEX_BIT, vertexFileData.data.get(), vertexFileData.size}
-        );
-        auto fragmentFileData = loadFileToMemory_XR("shaders/Flat.frag.spv");
-        VkShaderModule fragmentShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_FRAGMENT_BIT, fragmentFileData.data.get(), fragmentFileData.size}
-        );
         clay::PipelineResource::PipelineConfig pipelineConfig{
             .graphicsContext = *mpGraphicsContext_
         };
 
-        pipelineConfig.shaderStages = {
+        pipelineConfig.pipelineLayoutInfo.shaderStages = {
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertexShader,
+                .module = flatVertexShader,
                 .pName = "main"
             },
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragmentShader,
+                .module = flatFragmentShader,
                 .pName = "main"
             }
         };
         auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
-        pipelineConfig.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
-        pipelineConfig.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
+        pipelineConfig.pipelineLayoutInfo.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
+        pipelineConfig.pipelineLayoutInfo.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
 
-        pipelineConfig.pushConstants = {
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = 0,
-                .size = sizeof(glm::mat4)
-            },
-            {
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .offset = 64,
-                .size = sizeof(glm::vec4)
-            }
-        };
-
-        pipelineConfig.bufferCreateInfos = {
-            {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
-                .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
-        };
-
-        pipelineConfig.imageCreateInfos = {};
-
-        pipelineConfig.depthStencilState = {
+        pipelineConfig.pipelineLayoutInfo.depthStencilState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = VK_TRUE,
             .depthWriteEnable = VK_TRUE,
@@ -558,7 +510,7 @@ void DemoAppXR::CreateResources() {
             .stencilTestEnable = VK_FALSE,
         };
 
-        pipelineConfig.rasterizerState = {
+        pipelineConfig.pipelineLayoutInfo.rasterizerState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -569,80 +521,64 @@ void DemoAppXR::CreateResources() {
             .lineWidth = 1.0f,
         };
 
-        mpResources_->addResource<clay::PipelineResource>(
+        pipelineConfig.pipelineLayoutInfo.pushConstants = {
+            {
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = sizeof(glm::mat4) + sizeof(glm::vec4)
+            }
+        };
+
+        pipelineConfig.bindingLayoutInfo.bindings = {
+            {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
+            },
+        };
+
+        mResources_.addResource<clay::PipelineResource>(
             std::make_unique<clay::PipelineResource>(pipelineConfig),
             "Flat"
         );
     }
     // pipeline (SolidStencil)
     {
-        auto vertexFileData = loadFileToMemory_XR("shaders/Solid.vert.spv");
-        VkShaderModule vertexShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_VERTEX_BIT, vertexFileData.data.get(), vertexFileData.size}
-        );
-        auto fragmentFileData = loadFileToMemory_XR("shaders/Solid.frag.spv");
-        VkShaderModule fragmentShader = mpGraphicsContext_->createShader(
-            {VK_SHADER_STAGE_FRAGMENT_BIT, fragmentFileData.data.get(), fragmentFileData.size}
-        );
         clay::PipelineResource::PipelineConfig pipelineConfig{
             .graphicsContext = *mpGraphicsContext_
         };
 
-        pipelineConfig.shaderStages = {
+        pipelineConfig.pipelineLayoutInfo.shaderStages = {
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertexShader,
+                .module = solidVertexShader,
                 .pName = "main"
             },
             {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragmentShader,
+                .module = solidFragmentShader,
                 .pName = "main"
             }
         };
         auto vertexAttrib = clay::Mesh::Vertex::getAttributeDescriptions();
-        pipelineConfig.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
-        pipelineConfig.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
+        pipelineConfig.pipelineLayoutInfo.attributeDescriptions = {vertexAttrib.begin(), vertexAttrib.end()};
+        pipelineConfig.pipelineLayoutInfo.vertexInputBindingDescription = clay::Mesh::Vertex::getBindingDescription();
 
-        pipelineConfig.pushConstants = {
-            {
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = 0,
-                .size = sizeof(glm::mat4)
-            },
-            {
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .offset = 64,
-                .size = sizeof(glm::vec4)
-            }
-        };
-
-        pipelineConfig.bufferCreateInfos = {
-            {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
-                .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
-        };
-
-        pipelineConfig.imageCreateInfos = {};
 
         VkStencilOpState stencilState = {};
         stencilState.failOp = VK_STENCIL_OP_KEEP;
         stencilState.passOp = VK_STENCIL_OP_KEEP;
         stencilState.depthFailOp = VK_STENCIL_OP_KEEP;
-        stencilState.compareOp = VK_COMPARE_OP_NOT_EQUAL;  // Equivalent to glStencilFunc(ALWAYS, ref, mask)
+        stencilState.compareOp = VK_COMPARE_OP_NOT_EQUAL;
         stencilState.compareMask = 0xFF;
         stencilState.writeMask = 0x00;
         stencilState.reference = 0xFF;
 
-        pipelineConfig.depthStencilState = {
+        pipelineConfig.pipelineLayoutInfo.depthStencilState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
             .depthTestEnable = VK_FALSE,
             .depthWriteEnable = VK_FALSE,
@@ -653,7 +589,7 @@ void DemoAppXR::CreateResources() {
             .back = stencilState
         };
 
-        pipelineConfig.rasterizerState = {
+        pipelineConfig.pipelineLayoutInfo.rasterizerState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -664,7 +600,25 @@ void DemoAppXR::CreateResources() {
             .lineWidth = 1.0f,
         };
 
-        mpResources_->addResource<clay::PipelineResource>(
+        pipelineConfig.pipelineLayoutInfo.pushConstants = {
+            {
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = sizeof(glm::mat4) + sizeof(glm::vec4)
+            }
+        };
+
+        pipelineConfig.bindingLayoutInfo.bindings = {
+            {
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .pImmutableSamplers = nullptr
+            },
+        };
+
+        mResources_.addResource<clay::PipelineResource>(
             std::make_unique<clay::PipelineResource>(pipelineConfig),
             "SolidStencil"
         );
@@ -675,33 +629,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("VTexture")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("VTexture")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("VTexture")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("VTexture")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "VTexture"
         );
@@ -710,33 +658,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepthStencil")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepthStencil")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("VTexture")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("VTexture")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("VTexture")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("VTexture")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "VTextureStencil"
         );
@@ -745,33 +687,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("SolidTexture")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("SolidTexture")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("SolidTexture")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("SolidTexture")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "SolidTexture"
         );
@@ -780,33 +716,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("Sun")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("Sun")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("Sun")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("Sun")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "Sun"
         );
@@ -815,33 +745,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("Moon")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("Moon")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("Moon")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("Moon")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "Moon"
         );
@@ -850,33 +774,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("Earth")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("Earth")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("Earth")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("Earth")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "Earth"
         );
@@ -885,33 +803,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureNoDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureNoDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mHeadLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("Stars")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("Stars")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("Stars")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("Stars")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "Stars"
         );
@@ -920,33 +832,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureNoDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureNoDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mHeadLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .imageView = mpResources_->getResource<clay::Texture>("CloudySky")->mImageView_,
-                .sampler = mpResources_->getResource<clay::Texture>("CloudySky")->mSampler_,
-                .binding = 1
+                .sampler = mResources_.getResource<clay::Texture>("CloudySky")->getSampler(),
+                .imageView = mResources_.getResource<clay::Texture>("CloudySky")->getImageView(),
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "CloudySky"
         );
@@ -955,24 +861,19 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("Flat")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("Flat")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
 
-        matConfig.imageCreateInfos = {};
-
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "Flat"
         );
@@ -981,24 +882,19 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("SolidStencil")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("SolidStencil")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
 
-        matConfig.imageCreateInfos = {};
-
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "SolidStencil"
         );
@@ -1007,33 +903,27 @@ void DemoAppXR::CreateResources() {
     {
         clay::Material::MaterialConfig matConfig {
             .graphicsContext = *mpGraphicsContext_,
-            .pipelineResource = *mpResources_->getResource<clay::PipelineResource>("TextureDepth")
+            .pipelineResource = *mResources_.getResource<clay::PipelineResource>("TextureDepth")
         };
 
-        matConfig.bufferCreateInfos = {
+        matConfig.bufferBindings = {
             {
-                .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                .stride = 0,
+                .buffer = mXRSystem_->mpGraphicsContext_->mWorldLockedCameraUniform_->mBuffer_,
                 .size = sizeof(clay::BaseScene::CameraConstant),
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .binding = 0
-            },
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            }
         };
-
-        matConfig.imageCreateInfos = {
+        matConfig.imageBindings = {
             {
-                .data = nullptr,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .sampler = *mResources_.getResource<VkSampler>("Linear"),
                 .imageView = imguiImageView,
-                .sampler = *mpResources_->getResource<VkSampler>("Linear"),
-                .binding = 1
+                .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             }
         };
 
-        mpResources_->addResource<clay::Material>(
+        mResources_.addResource<clay::Material>(
             std::make_unique<clay::Material>(matConfig),
             "ImguiFrame"
         );
@@ -1043,112 +933,136 @@ void DemoAppXR::CreateResources() {
     // solid sphere
     {
         std::unique_ptr<clay::Model> pSolidSphereModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pSolidSphereModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pSolidSphereModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("SolidTexture"));
-
-        mpResources_->addResource<clay::Model>(std::move(pSolidSphereModel), "SolidSphere");
+        pSolidSphereModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("SolidTexture"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pSolidSphereModel), "SolidSphere");
     }
     // v sphere
     {
         std::unique_ptr<clay::Model> pVSphereModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pVSphereModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pVSphereModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("VTexture"));
-
-        mpResources_->addResource<clay::Model>(std::move(pVSphereModel), "VSphere");
+        pVSphereModel->addElement({
+          mResources_.getResource<clay::Mesh>("Sphere"),
+          mResources_.getResource<clay::Material>("VTexture"),
+          glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pVSphereModel), "VSphere");
     }
     // v sphere-stencil
     {
         std::unique_ptr<clay::Model> pVSphereModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pVSphereModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pVSphereModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("VTextureStencil"));
 
-        mpResources_->addResource<clay::Model>(std::move(pVSphereModel), "VSphereStencil");
+        pVSphereModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("VTextureStencil"),
+          glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pVSphereModel), "VSphereStencil");
     }
     // v sphere solid highlight
     {
         std::unique_ptr<clay::Model> pVSphereModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pVSphereModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pVSphereModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("SolidStencil"));
-
-        mpResources_->addResource<clay::Model>(std::move(pVSphereModel), "VSphereSolid");
+        pVSphereModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("SolidStencil"),
+          glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pVSphereModel), "VSphereSolid");
     }
     // sun
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pRenderable->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Sun"));
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "Sun");
+        std::unique_ptr<clay::Model> pModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("Sun"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pModel), "Sun");
     }
     // moon
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pRenderable->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Moon"));
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "Moon");
+        std::unique_ptr<clay::Model> pModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("Moon"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pModel), "Moon");
     }
     // earth
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pRenderable->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Earth"));
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "Earth");
+        std::unique_ptr<clay::Model> pModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("Earth"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pModel), "Earth");
     }
     // skybox (star)
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Cube"));
-        pRenderable->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Stars"));
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "StarSkybox");
+        std::unique_ptr<clay::Model> pModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("Stars"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pModel), "StarSkybox");
     }
     // skybox (cloudy)
     {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRenderable->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Sphere"));
-        pRenderable->mMaterials_.push_back(mpResources_->getResource<clay::Material>("CloudySky"));
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "CloudySkybox");
+        std::unique_ptr<clay::Model> pModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pModel->addElement({
+            mResources_.getResource<clay::Mesh>("Sphere"),
+            mResources_.getResource<clay::Material>("CloudySky"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pModel), "CloudySkybox");
     }
     // Hands
     {
         std::unique_ptr<clay::Model> pLeftHandModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pLeftHandModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("GloveLeft"));
-        pLeftHandModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Flat"));
-        pLeftHandModel->mColor_ = {.95f, .674f, .411f, 1.0f};
-
-        mpResources_->addResource<clay::Model>(std::move(pLeftHandModel), "GloveLeft");
+        pLeftHandModel->addElement({
+            mResources_.getResource<clay::Mesh>("GloveLeft"),
+            mResources_.getResource<clay::Material>("Flat"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pLeftHandModel), "GloveLeft");
 
         std::unique_ptr<clay::Model> pRightHandModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pRightHandModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("GloveRight"));
-        pRightHandModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("Flat"));
-        pRightHandModel->mColor_ = {.95f, .674f, .411f, 1.0f};
-
-        mpResources_->addResource<clay::Model>(std::move(pRightHandModel), "GloveRight");
+        pRightHandModel->addElement({
+            mResources_.getResource<clay::Mesh>("GloveRight"),
+            mResources_.getResource<clay::Material>("Flat"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pRightHandModel), "GloveRight");
     }
     // imgui
     {
-        std::unique_ptr<clay::Model> pVSphereModel = std::make_unique<clay::Model>(*mpGraphicsContext_);
-        pVSphereModel->mMeshes_.push_back(mpResources_->getResource<clay::Mesh>("Plane"));
-        pVSphereModel->mMaterials_.push_back(mpResources_->getResource<clay::Material>("ImguiFrame"));
-        mpResources_->addResource<clay::Model>(std::move(pVSphereModel), "ImguiPlane");
+        std::unique_ptr<clay::Model> pImguiPlane = std::make_unique<clay::Model>(*mpGraphicsContext_);
+        pImguiPlane->addElement({
+            mResources_.getResource<clay::Mesh>("Plane"),
+            mResources_.getResource<clay::Material>("ImguiFrame"),
+            glm::mat4(1),
+        });
+        mResources_.addResource<clay::Model>(std::move(pImguiPlane), "ImguiPlane");
     }
 
     mSandboxImguiTextureId = ImGui_ImplVulkan_AddTexture(
-        mpResources_->getResource<clay::Texture>("SandboxPreview")->mSampler_,
-        mpResources_->getResource<clay::Texture>("SandboxPreview")->mImageView_,
+        mResources_.getResource<clay::Texture>("SandboxPreview")->getSampler(),
+        mResources_.getResource<clay::Texture>("SandboxPreview")->getImageView(),
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
     mSpaceImguiTextureId = ImGui_ImplVulkan_AddTexture(
-        mpResources_->getResource<clay::Texture>("SpacePreview")->mSampler_,
-        mpResources_->getResource<clay::Texture>("SpacePreview")->mImageView_,
+        mResources_.getResource<clay::Texture>("SpacePreview")->getSampler(),
+        mResources_.getResource<clay::Texture>("SpacePreview")->getImageView(),
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
     mFarmImguiTextureId = ImGui_ImplVulkan_AddTexture(
-        mpResources_->getResource<clay::Texture>("FarmPreview")->mSampler_,
-        mpResources_->getResource<clay::Texture>("FarmPreview")->mImageView_,
+        mResources_.getResource<clay::Texture>("FarmPreview")->getSampler(),
+        mResources_.getResource<clay::Texture>("FarmPreview")->getImageView(),
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     );
 
@@ -1160,7 +1074,6 @@ void DemoAppXR::CreateResources() {
                 "Scene for experimenting features.",
                 mSandboxImguiTextureId,
                 [this]{
-                    //mScenes_.front()->setRemove(true);
                     setScene(new SandboxScene(*this));
                 }
             },
@@ -1169,7 +1082,6 @@ void DemoAppXR::CreateResources() {
                 "Space simulation with an orbiting solar system.",
                 mSpaceImguiTextureId,
                 [this]{
-                    //mScenes_.front()->setRemove(true);
                     setScene(new SpaceScene(*this));
                 }
             },
@@ -1178,12 +1090,20 @@ void DemoAppXR::CreateResources() {
                 "Simple Nature Scene with future plans to include farming.",
                 mFarmImguiTextureId,
                 [this]{
-                    //mScenes_.front()->setRemove(true);
                     setScene(new FarmScene(*this));
                 }
             }
         };
     }
+
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), textureVertexShader, nullptr);
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), textureFragmentShader, nullptr);
+
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), flatVertexShader, nullptr);
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), flatFragmentShader, nullptr);
+
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), solidVertexShader, nullptr);
+    vkDestroyShaderModule(mpGraphicsContext_->getDevice(), solidFragmentShader, nullptr);
 
     mScenes_.front()->initialize();
 }

@@ -11,7 +11,7 @@ public:
         std::function<void()> mLoadScene_;
     };
 
-    DemoAppXR(android_app* pAndroidApp);
+    DemoAppXR(clay::XRSystem* pAndroidApp);
 
     void initialize() override;
 

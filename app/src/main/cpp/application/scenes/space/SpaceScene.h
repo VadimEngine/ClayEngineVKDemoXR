@@ -6,11 +6,9 @@
 #include <clay/gui/xr/ImGuiComponentXR.h>
 #include <clay/application/xr/CameraControllerXR.h>
 
-
-
 class SpaceScene : public clay::BaseScene {
 public:
-    SpaceScene(clay::IApp& app);
+    SpaceScene(clay::BaseApp& app);
 
     ~SpaceScene();
 

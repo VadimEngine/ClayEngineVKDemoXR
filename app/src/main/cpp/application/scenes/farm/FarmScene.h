@@ -11,7 +11,7 @@
 
 class FarmScene : public clay::BaseScene {
 public:
-    FarmScene(clay::IApp& app);
+    FarmScene(clay::BaseApp& app);
 
     ~FarmScene();
 

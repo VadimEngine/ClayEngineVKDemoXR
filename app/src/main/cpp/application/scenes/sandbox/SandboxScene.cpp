@@ -1,13 +1,15 @@
 // project
 #include "application/DemoAppXR.h"
-// class
-#include "application/scenes/sandbox/SandboxScene.h"
 // third party
 #include <glm/vec3.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+// clay
+#include <clay/entity/render/ModelRenderable.h>
+// class
+#include "application/scenes/sandbox/SandboxScene.h"
 
-SandboxScene::SandboxScene(clay::IApp& app)
+SandboxScene::SandboxScene(clay::BaseApp& app)
     : clay::BaseScene(app), mCameraController_(mpFocusCamera_) {}
 
 SandboxScene::~SandboxScene() {}
@@ -18,7 +20,7 @@ void SandboxScene::initialize() {
     // solid sphere
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("SolidSphere")
+            mApp_.getResources().getResource<clay::Model>("SolidSphere")
         );
 
         mCenterSphere_.addRenderable(modelRenderable);
@@ -29,22 +31,22 @@ void SandboxScene::initialize() {
     {
         // VSphere
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("VSphere")
+            mApp_.getResources().getResource<clay::Model>("VSphere")
         );
         mTexturedSphere_.addRenderable(modelRenderable);
         mTexturedSphere_.setPosition({-1,0,-2});
 
         auto* modelRenderable2 = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("VSphereStencil")
+            mApp_.getResources().getResource<clay::Model>("VSphereStencil")
         );
         mTexturedSphereStencil_.addRenderable(modelRenderable2);
         mTexturedSphereStencil_.setPosition({-1,0,-2});
 
         auto* modelRenderable3 = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("VSphereSolid")
+            mApp_.getResources().getResource<clay::Model>("VSphereSolid")
         );
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("VSphereSolid")->mScale_ = {1.1, 1.1, 1.1};
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("VSphereSolid")->mColor_ = {1.1, 1.1, 0, 1.0};
+        modelRenderable3->setScale( {1.1, 1.1, 1.1} );
+        modelRenderable3->setColor({1.1, 1.1, 0, 1.0});
 
         mTexturedSphereSolid_.addRenderable(modelRenderable3);
         mTexturedSphereSolid_.setPosition({-1,0,-2});
@@ -53,22 +55,24 @@ void SandboxScene::initialize() {
     {
         // left
         auto* handLeftRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveLeft")
+            mApp_.getResources().getResource<clay::Model>("GloveLeft")
         );
         handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mLeftHandEntity_.addRenderable(handLeftRenderable);
 
         // right
         auto* handRightRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveRight")
+            mApp_.getResources().getResource<clay::Model>("GloveRight")
         );
         handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mRightHandEntity_.addRenderable(handRightRenderable);
     }
     // plane
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("ImguiPlane")
+            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
         );
         mPlaneEntity_.addRenderable(modelRenderable);
         mPlaneEntity_.setPosition({2,0,0});
@@ -77,11 +81,11 @@ void SandboxScene::initialize() {
     }
     {
         auto* textRenderable = new clay::TextRenderable(
-            *mApp_.mpGraphicsContext_, "HELLO WORLD!", ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Font>("Runescape")
+            mApp_.getGraphicsContext(), "HELLO WORLD!", mApp_.getResources().getResource<clay::Font>("Runescape")
         );
-        textRenderable->initialize();
-        textRenderable->mScale_ = {.01f,.01f,.01f};
-        textRenderable->mColor_ = {1,1,0,1};
+
+        textRenderable->setScale({.01f,.01f,.01f});
+        textRenderable->setColor({1,1,0,1});
         mTextEntity_.addRenderable(textRenderable);
         mTextEntity_.setPosition({1,0,-2});
     }
@@ -149,42 +153,6 @@ void SandboxScene::update(float dt) {
 
 void SandboxScene::render(VkCommandBuffer cmdBuffer) {
     // update camera uniform
-    // TODO for now copy it here
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("VTexture")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("VTextureStencil")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("SolidStencil")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("SolidTexture")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("ImguiFrame")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Font>("Runescape")->mMaterial_->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
 
     mCenterSphere_.render(cmdBuffer);
     if (mHighLight) {
@@ -202,7 +170,7 @@ void SandboxScene::render(VkCommandBuffer cmdBuffer) {
 }
 
 void SandboxScene::assembleResources() {
-    mpResources_ = new clay::Resources(*mApp_.mpGraphicsContext_);
+    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
 
     mpBeepDeepAudio_ = mApp_.getResources().getResource<clay::Audio>("DeepBeep");
 }

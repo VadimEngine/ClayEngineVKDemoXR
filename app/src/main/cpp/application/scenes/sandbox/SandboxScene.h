@@ -14,7 +14,7 @@
 
 class SandboxScene : public clay::BaseScene {
 public:
-    SandboxScene(clay::IApp& app);
+    SandboxScene(clay::BaseApp& app);
 
     ~SandboxScene();
 

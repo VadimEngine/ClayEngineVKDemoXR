@@ -1,5 +1,6 @@
 // clay
 #include <clay/utils/common/Logger.h>
+#include <clay/application/xr/XRSystem.h>
 // application
 #include "application/DemoAppXR.h"
 #include "application/scenes/sandbox/SandboxScene.h"
@@ -32,7 +33,11 @@ void android_main(struct android_app* androidApp) {
     LOG_I("Starting Clay VK VR Demo");
 
     DebugOutput debugOutput;  // This redirects std::cerr and std::cout to the IDE's output or Android Studio's logcat.
-    DemoAppXR demoAppXr(androidApp);
+
+    clay::XRSystem xrSystem(androidApp);
+    xrSystem.initialize();
+
+    DemoAppXR demoAppXr(&xrSystem);
     clay::Resources::setFileLoader(
         [&demoAppXr](const std::string& path) {
             return demoAppXr.loadFileToMemory_XR(path);

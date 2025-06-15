@@ -1,9 +1,11 @@
 // clay
+#include <clay/entity/render/ModelRenderable.h>
+// project
 #include "application/DemoAppXR.h"
 // class
 #include "SpaceScene.h"
 
-SpaceScene::SpaceScene(clay::IApp& app)
+SpaceScene::SpaceScene(clay::BaseApp& app)
     : clay::BaseScene(app),
       mCameraController_(mpFocusCamera_) {}
 
@@ -18,22 +20,24 @@ void SpaceScene::initialize() {
     {
         // left
         auto* handLeftRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveLeft")
+            mApp_.getResources().getResource<clay::Model>("GloveLeft")
         );
         handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mLeftHandEntity_.addRenderable(handLeftRenderable);
 
         // right
         auto* handRightRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("GloveRight")
+            mApp_.getResources().getResource<clay::Model>("GloveRight")
         );
         handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
+        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
         mRightHandEntity_.addRenderable(handRightRenderable);
     }
     // imgui plane
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("ImguiPlane")
+            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
         );
         mPlaneEntity_.addRenderable(modelRenderable);
         mPlaneEntity_.setPosition({2,0,4});
@@ -44,7 +48,7 @@ void SpaceScene::initialize() {
     // sun
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("Sun")
+            mApp_.getResources().getResource<clay::Model>("Sun")
         );
         mSunSphere_.addRenderable(modelRenderable);
         mSunSphere_.setPosition({0,0,0});
@@ -52,7 +56,7 @@ void SpaceScene::initialize() {
     // earth
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("Earth")
+            mApp_.getResources().getResource<clay::Model>("Earth")
         );
         mPlanetEntity_.addRenderable(modelRenderable);
         mPlanetEntity_.setPosition({0 ,0, mPlanetOrbitRadius_});
@@ -61,7 +65,7 @@ void SpaceScene::initialize() {
     // moon
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("Moon")
+            mApp_.getResources().getResource<clay::Model>("Moon")
         );
         const auto planetPosition = mPlanetEntity_.getPosition();
 
@@ -72,7 +76,7 @@ void SpaceScene::initialize() {
     // skybox
     {
         auto* modelRenderable = new clay::ModelRenderable(
-            ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Model>("StarSkybox")
+            mApp_.getResources().getResource<clay::Model>("StarSkybox")
         );
         mSkyBoxEntity.addRenderable(modelRenderable);
         mSkyBoxEntity.setPosition({0,0,0});
@@ -187,36 +191,6 @@ void SpaceScene::update(float dt) {
 }
 
 void SpaceScene::render(VkCommandBuffer cmdBuffer) {
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Sun")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Moon")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Earth")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Stars")->mUniformBuffersMapped_[0],
-        &cameraConstants2, // headlocked
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("Flat")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
-    memcpy(
-        ((clay::AppXR&)(mApp_)).mpResources_->getResource<clay::Material>("ImguiFrame")->mUniformBuffersMapped_[0],
-        &cameraConstants,
-        sizeof(CameraConstant)
-    );
     mSkyBoxEntity.render(cmdBuffer);
     mPlanetEntity_.render(cmdBuffer);
     mSunSphere_.render(cmdBuffer);
@@ -417,7 +391,7 @@ void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
 }
 
 void SpaceScene::assembleResources() {
-    mpResources_ = new clay::Resources(*mApp_.mpGraphicsContext_);
+    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
 }
 
 void SpaceScene::destroyResources() {}
