@@ -42,7 +42,6 @@
             <!-- Standard Khronos OpenXR launcher intent filter. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD" />
             </intent-filter>
@@ -50,11 +49,9 @@
             <!-- Meta Quest-specific non-standard intent filter. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="com.oculus.intent.category.VR" />
             </intent-filter>
         </activity>
     </application>
-
 </manifest>

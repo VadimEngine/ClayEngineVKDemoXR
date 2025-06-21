@@ -1,6 +1,6 @@
 # ClayEngineVK Demo XR
 
-Demo application of the ClayEngineVK static library (https://github.com/VadimEngine/ClayEngineVK) showcasing building a XR application with OpenXR, Vulkan, and Android. This application allows loading and using resources to build scenes that the user can navigate and interact with. This application primarily uses OpenXR from ClayEngineVK for the VR functionality to run on Oculus Quest 3.
+Demo application of the ClayEngineVK static library (https://github.com/VadimEngine/ClayEngineVK) showcasing building an XR application with OpenXR, Vulkan, and Android. This application allows loading and using resources to build scenes that the user can navigate and interact with. This application primarily uses OpenXR from ClayEngineVK for the VR functionality to run on Oculus Quest 3.
 
 ![alt text](./screenshots/VKXRDemoGif.gif)
 
@@ -20,6 +20,9 @@ Similar to Sandbox scene but instead, A nature scene is rendered.
 
 ## Build
 
+Update Submodules
+- `git submodule update --init --recursive`
+
 compile shaders
 - `./res/compile_shaders.bat`
 
@@ -27,6 +30,6 @@ build CLI:
 - `./gradlew clean assembleDebug`
 - `./gradlew clean build`
 
-The build `app-debug.apk` will be `ClayEngineDemoVR\app\build\intermediates\apk\debug\app-debug.apk` can be deployed to an Oculus device
+The build `app-debug.apk` will be `.\app\build\intermediates\apk\debug\app-debug.apk` can be deployed to an Oculus device
 
 Alternatively, this can be built and deployed with Android studio.
