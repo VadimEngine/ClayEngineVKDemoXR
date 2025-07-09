@@ -1,5 +1,4 @@
 // clay
-#include <clay/entity/render/ModelRenderable.h>
 // project
 #include "application/DemoAppXR.h"
 // class
@@ -7,77 +6,108 @@
 
 FarmScene::FarmScene(clay::BaseApp& app)
     : clay::BaseScene(app),
+      mEntityManager_(app.getGraphicsContext(), app.getResources()),
+      mSkyBox_(
+          mApp_.getResources()[mApp_.getResources().getHandle<clay::Mesh>("Sphere")],
+          mApp_.getResources()[mApp_.getResources().getHandle<clay::Material>("CloudySky")]
+      ),
       mCameraController_(mpFocusCamera_) {}
 
 FarmScene::~FarmScene() {}
 
 void FarmScene::initialize() {
     assembleResources();
+    // hands
     {
         // left
-        auto* handLeftRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveLeft")
-        );
-        handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mLeftHandEntity_.addRenderable(handLeftRenderable);
+        {
+            mLeftHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveLeft"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-        // right
-        auto* handRightRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveRight")
-        );
-        handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mRightHandEntity_.addRenderable(handRightRenderable);
-    }
-    // imgui plane
-    {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
-        );
-        mPlaneEntity_.addRenderable(modelRenderable);
-        mPlaneEntity_.setPosition({2,0,0});
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    }
-    // tree
-    {
-        auto* treeTopRenderable = new clay::ModelRenderable(
-            mpResources_->getResource<clay::Model>("TreeTop")
-        );
-        treeTopRenderable->setPosition({0,1,0});
-        treeTopRenderable->setColor({0.0f, 1.0f, 0.0f, 1.0f});
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mLeftHandEntity_, {});
+        }
+        {
+            // right
+            mRightHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveRight"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-        auto* treeTrunkRenderable = new clay::ModelRenderable(
-            mpResources_->getResource<clay::Model>("TreeTrunk")
-        );
-        treeTrunkRenderable->setScale({.1, 2, .1});
-        treeTrunkRenderable->setColor({0.239, 0.141, 0.071, 1.0f});
-
-        mTreeEntity_.addRenderable(treeTopRenderable);
-        mTreeEntity_.addRenderable(treeTrunkRenderable);
-
-        mTreeEntity_.setPosition({0,0,0});
-        mTreeEntity_.setScale({1,1,1});
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mRightHandEntity_, {});
+        }
     }
-    // floor
     {
-        auto* renderable = new clay::ModelRenderable(
-            mpResources_->getResource<clay::Model>("GrassFloor")
-        );
-        renderable->setColor({0.0f, 1.0f, 0.0f, 1.0f});
-        mFloorEntity_.addRenderable(renderable);
-        mFloorEntity_.setPosition({0,-1,0});
-        mFloorEntity_.setScale({50,50,50});
+        // plane/imgui
+        mPlaneEntity_ = mEntityManager_.createEntity();
+
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
+        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {2,0,0};
+        transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        mEntityManager_.addTransform(mPlaneEntity_, transform);
     }
-    // skybox
     {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("CloudySkybox")
-        );
-        mSkyBoxEntity.addRenderable(modelRenderable);
-        mSkyBoxEntity.setPosition({0,0,0});
-        mSkyBoxEntity.setScale({1,1,1});
+        // tree
+        {
+            // top
+            mTreeEntityTop_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderable{};
+            modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("TreeTop");
+            modelRenderable.mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
+            mEntityManager_.addModelRenderable(mTreeEntityTop_, modelRenderable);
+            clay::ecs::Transform transform{};
+            transform.mPosition_ = {0,1,0};
+
+            mEntityManager_.addTransform(mTreeEntityTop_, transform);
+        }
+        {
+            // trunk
+            mTreeEntityTrunk_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderable{};
+            modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("TreeTrunk");
+            modelRenderable.mColor_ = {0.239, 0.141, 0.071, 1.0f};
+            mEntityManager_.addModelRenderable(mTreeEntityTrunk_, modelRenderable);
+            clay::ecs::Transform transform{};
+            transform.mScale_ = {.1, 2, .1};
+
+            mEntityManager_.addTransform(mTreeEntityTrunk_, transform);
+        }
+    }
+    {
+        // floor
+        mFloorEntity_ = mEntityManager_.createEntity();
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("GrassFloor");
+        modelRenderable.mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
+        mEntityManager_.addModelRenderable(mFloorEntity_, modelRenderable);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {0,-1,0};
+        transform.mScale_ = {50,50,50};
+        mEntityManager_.addTransform(mFloorEntity_, transform);
     }
 }
 
@@ -102,7 +132,8 @@ void FarmScene::update(float dt) {
         1.0f/2.0f * 2.0f,
         headPose
     );
-    mSkyBoxEntity.setOrientation(glm::conjugate(mpFocusCamera_->getOrientation()));
+
+    mSkyBox_.update(mpFocusCamera_->getOrientation(), dt);
 
     const glm::vec3 cameraPosition = mpFocusCamera_->getPosition();
     const glm::quat cameraOrientation = mpFocusCamera_->getOrientation();
@@ -117,32 +148,25 @@ void FarmScene::update(float dt) {
 
     {
         // update left hand
-        mLeftHandEntity_.setOrientation(cameraOrientation * leftHandOrientation);
-        mLeftHandEntity_.setPosition(leftHandPosition);
+        mEntityManager_.mTransforms[mLeftHandEntity_].mOrientation_ = cameraOrientation * leftHandOrientation;
+        mEntityManager_.mTransforms[mLeftHandEntity_].mPosition_ = leftHandPosition;
     }
     {
         // update right hand
-        mRightHandEntity_.setOrientation(cameraOrientation * rightHandOrientation);
-        mRightHandEntity_.setPosition(rightHandPosition);
+        mEntityManager_.mTransforms[mRightHandEntity_].mOrientation_ = cameraOrientation * rightHandOrientation;
+        mEntityManager_.mTransforms[mRightHandEntity_].mPosition_ = rightHandPosition;
     }
 }
 
 void FarmScene::render(VkCommandBuffer cmdBuffer) {
-    mSkyBoxEntity.render(cmdBuffer);
-    mTreeEntity_.render(cmdBuffer);
-    mFloorEntity_.render(cmdBuffer);
-
-    mPlaneEntity_.render(cmdBuffer); // imgui
-
-    mLeftHandEntity_.render(cmdBuffer);
-    mRightHandEntity_.render(cmdBuffer);
+    mSkyBox_.render(cmdBuffer);
+    mEntityManager_.render(cmdBuffer);
 }
 
 void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 
-    // todo see if pointing at plane
     const auto& rightHandPose = ((clay::AppXR &) mApp_).getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
     const glm::quat rightHandOrientation(rightHandPose.orientation.w, rightHandPose.orientation.x, rightHandPose.orientation.y, rightHandPose.orientation.z);
     glm::vec3 rightHandPosition = glm::vec3(rightHandPose.position.x,rightHandPose.position.y,rightHandPose.position.z);
@@ -158,21 +182,22 @@ void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
     glm::vec3 rayOrigin = rightHandPosition;
     glm::vec3 rayDir = rightHandForward;
 
-    glm::vec3 normal = glm::normalize(mPlaneEntity_.getOrientation() * glm::vec3{0, 1, 0});
+
+    glm::vec3 normal = glm::normalize(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_ * glm::vec3{0, 1, 0});
 
     float denominator = glm::dot(normal, rayDir);
 
     ImVec2 calMousePos = {0,0};
 
     if (glm::abs(denominator) > 1e-6f) {
-        glm::vec3 planeToRay = mPlaneEntity_.getPosition() - rayOrigin;
+        glm::vec3 planeToRay = mEntityManager_.mTransforms[mPlaneEntity_].mPosition_- rayOrigin;
         float t = glm::dot(planeToRay, normal) / denominator;
 
         if (t > 0.0f) {
             glm::vec3 intersectPoint = rayOrigin + t * rayDir;
 
-            glm::mat4 rotationMatrix = glm::mat4_cast(mPlaneEntity_.getOrientation());
-            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPlaneEntity_.getPosition());
+            glm::mat4 rotationMatrix = glm::mat4_cast(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_);
+            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mEntityManager_.mTransforms[mPlaneEntity_].mPosition_);
 
 
             float planeMinX = -0.5f, planeMaxX = 0.5f; // Plane bounds in local space
@@ -294,7 +319,7 @@ void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
     ImGui::BeginGroup();
     if (ImGui::BeginListBox("##Scenes")) {
         for (unsigned int i = 0; i < ((DemoAppXR&)mApp_).mSceneDetails_.size(); ++i) {
-            std::string elementName = "Entity " + ((DemoAppXR &)mApp_).mSceneDetails_[i].mName_;
+            std::string elementName = ((DemoAppXR &)mApp_).mSceneDetails_[i].mName_;
             if (ImGui::Selectable(elementName.c_str(), i == mSelectedSceneIdx)) {
                 mSelectedSceneIdx = i;
             }
@@ -324,40 +349,6 @@ void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuffer);
 }
 
-void FarmScene::assembleResources() {
-    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
+void FarmScene::assembleResources() {}
 
-    // create leaves model
-    {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
-        pRenderable->addElement({
-            mApp_.getResources().getResource<clay::Mesh>("Sphere"),
-            mApp_.getResources().getResource<clay::Material>("Flat"),
-        });
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "TreeTop");
-    }
-    // create trunk model
-    {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
-        pRenderable->addElement({
-            mApp_.getResources().getResource<clay::Mesh>("Cube"),
-            mApp_.getResources().getResource<clay::Material>("Flat"),
-        });
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "TreeTrunk");
-    }
-    // floor model
-    {
-        std::unique_ptr<clay::Model> pRenderable = std::make_unique<clay::Model>(mApp_.getGraphicsContext());
-        pRenderable->addElement({
-            mApp_.getResources().getResource<clay::Mesh>("Plane"),
-            mApp_.getResources().getResource<clay::Material>("Flat"),
-        });
-
-        mpResources_->addResource<clay::Model>(std::move(pRenderable), "GrassFloor");
-    }
-}
-
-void FarmScene::destroyResources() {
-
-}
+void FarmScene::destroyResources() {}

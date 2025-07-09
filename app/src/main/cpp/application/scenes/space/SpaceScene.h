@@ -2,9 +2,10 @@
 // clay
 #include <clay/graphics/xr/GraphicsContextXR.h>
 #include <clay/application/common/BaseScene.h>
-#include <clay/application/common/Resources.h>
 #include <clay/gui/xr/ImGuiComponentXR.h>
 #include <clay/application/xr/CameraControllerXR.h>
+#include <clay/graphics/common/SkyBox.h>
+#include <clay/ecs/EntityManager.h>
 
 class SpaceScene : public clay::BaseScene {
 public:
@@ -24,17 +25,17 @@ public:
 
     void destroyResources() override;
 
-    clay::Resources* mpResources_;
+    clay::ecs::EntityManager mEntityManager_;
 
-    clay::Entity mSkyBoxEntity;
-    clay::Entity mLeftHandEntity_;
-    clay::Entity mRightHandEntity_;
+    clay::SkyBox mSkyBox_;
+    clay::ecs::Entity mLeftHandEntity_;
+    clay::ecs::Entity mRightHandEntity_;
 
-    clay::Entity mPlanetEntity_;
-    clay::Entity mSunSphere_;
-    clay::Entity mMoonEntity_;
+    clay::ecs::Entity mPlanetEntity_;
+    clay::ecs::Entity mSunSphere_;
+    clay::ecs::Entity mMoonEntity_;
 
-    clay::Entity mPlaneEntity_; // imgui
+    clay::ecs::Entity mPlaneEntity_; // imgui
 
     float planetOrbitSpeed = -1.0f/60.0f;
     float moonOrbitSpeed = -2.0f/60.0f;

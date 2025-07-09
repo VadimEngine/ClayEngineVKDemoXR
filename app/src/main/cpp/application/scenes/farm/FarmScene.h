@@ -2,12 +2,11 @@
 // third party
 #include <glm/glm.hpp>
 // clay
-#include <clay/application/common/Resources.h>
 #include <clay/application/common/BaseScene.h>
 #include <clay/application/xr/CameraControllerXR.h>
 #include <clay/gui/xr/ImGuiComponentXR.h>
-
-
+#include <clay/graphics/common/SkyBox.h>
+#include <clay/ecs/EntityManager.h>
 
 class FarmScene : public clay::BaseScene {
 public:
@@ -27,22 +26,21 @@ public:
 
     void destroyResources() override;
 
+    clay::ecs::EntityManager mEntityManager_;
+    clay::SkyBox mSkyBox_;
 
-    clay::Entity mSkyBoxEntity;
-    clay::Entity mLeftHandEntity_;
-    clay::Entity mRightHandEntity_;
+    clay::ecs::Entity mSkyBoxEntity;
+    clay::ecs::Entity mLeftHandEntity_;
+    clay::ecs::Entity mRightHandEntity_;
 
-    clay::Entity mTreeEntity_;
+    clay::ecs::Entity mTreeEntityTop_;
+    clay::ecs::Entity mTreeEntityTrunk_;
 
-    clay::Entity mFloorEntity_;
+    clay::ecs::Entity mFloorEntity_;
+
+    clay::ecs::Entity mPlaneEntity_; // imgui
 
     clay::CameraControllerXR mCameraController_;
 
-
-    clay::Entity mPlaneEntity_; // imgui
-
-    clay::Resources* mpResources_;
     unsigned int mSelectedSceneIdx = 0;
-
-
 };

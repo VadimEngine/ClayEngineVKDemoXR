@@ -5,89 +5,168 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 // clay
-#include <clay/entity/render/ModelRenderable.h>
 // class
 #include "application/scenes/sandbox/SandboxScene.h"
 
 SandboxScene::SandboxScene(clay::BaseApp& app)
-    : clay::BaseScene(app), mCameraController_(mpFocusCamera_) {}
+    : clay::BaseScene(app),
+      mEntityManager_(app.getGraphicsContext(), app.getResources()),
+      mCameraController_(mpFocusCamera_) {}
 
 SandboxScene::~SandboxScene() {}
 
 void SandboxScene::initialize() {
     assembleResources();
 
+    // VSphere
+    {
+        {
+            // plain
+            mTexturedSphere_ = mEntityManager_.createEntity();
+
+            clay::ecs::ModelRenderable modelRenderablePlain{};
+            modelRenderablePlain.modelHandle = mApp_.getResources().getHandle<clay::Model>("VSphere");
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0,0,0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {1.0f, 1.0f, 1.0f});
+
+            modelRenderablePlain.localModelMat = translationMat * rotationMat * scaleMat;
+            mEntityManager_.addModelRenderable(mTexturedSphere_, modelRenderablePlain);
+            clay::ecs::Transform transform{};
+            transform.mPosition_ = {-1,0,-2};
+            mEntityManager_.addTransform(mTexturedSphere_, transform);
+            mEntityManager_.addMetaData(mTexturedSphere_, {});
+        }
+        {
+            // stencil
+            mTexturedSphereStencil_ = mEntityManager_.createEntity();
+
+            clay::ecs::ModelRenderable modelRenderablePlain{};
+            modelRenderablePlain.modelHandle = mApp_.getResources().getHandle<clay::Model>("VSphereStencil");
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0,0,0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {1.0f, 1.0f, 1.0f});
+
+            modelRenderablePlain.localModelMat = translationMat * rotationMat * scaleMat;
+            mEntityManager_.addModelRenderable(mTexturedSphereStencil_, modelRenderablePlain);
+            clay::ecs::Transform transform{};
+            transform.mPosition_ = {-1,0,-2};
+            mEntityManager_.addTransform(mTexturedSphereStencil_, transform);
+            mEntityManager_.addMetaData(mTexturedSphereStencil_, {false});
+        }
+        {
+            // solid
+            mTexturedSphereSolid_ = mEntityManager_.createEntity();
+
+            clay::ecs::ModelRenderable modelRenderableSolid{};
+            modelRenderableSolid.modelHandle = mApp_.getResources().getHandle<clay::Model>("VSphereSolid");
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0,0,0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {1.1, 1.1, 1.1});
+
+            modelRenderableSolid.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableSolid.mColor_ = {1.0f, 1.0f, 0.0f, 1.0f};
+            mEntityManager_.addModelRenderable(mTexturedSphereSolid_, modelRenderableSolid);
+            clay::ecs::Transform transform{};
+            transform.mPosition_ = {-1,0,-2};
+            mEntityManager_.addTransform(mTexturedSphereSolid_, transform);
+            mEntityManager_.addMetaData(mTexturedSphereSolid_, {false});
+        }
+    }
     // solid sphere
     {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("SolidSphere")
-        );
+        mCenterSphere_ = mEntityManager_.createEntity();
 
-        mCenterSphere_.addRenderable(modelRenderable);
-        mCenterSphere_.setPosition({0,0,0});
-        mCenterSphere_.setScale({.1f,.1f,.1f});
-    }
-    // v sphere
-    {
-        // VSphere
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("VSphere")
-        );
-        mTexturedSphere_.addRenderable(modelRenderable);
-        mTexturedSphere_.setPosition({-1,0,-2});
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("SolidSphere");
+        // translation matrix
+        glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0,0,0});
+        //rotation matrix
+        glm::mat4 rotationMat = glm::identity<glm::mat4>();
+        // scale matrix
+        glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {.1f, .1f, .1f});
 
-        auto* modelRenderable2 = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("VSphereStencil")
-        );
-        mTexturedSphereStencil_.addRenderable(modelRenderable2);
-        mTexturedSphereStencil_.setPosition({-1,0,-2});
-
-        auto* modelRenderable3 = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("VSphereSolid")
-        );
-        modelRenderable3->setScale( {1.1, 1.1, 1.1} );
-        modelRenderable3->setColor({1.1, 1.1, 0, 1.0});
-
-        mTexturedSphereSolid_.addRenderable(modelRenderable3);
-        mTexturedSphereSolid_.setPosition({-1,0,-2});
+        modelRenderable.localModelMat = translationMat * rotationMat * scaleMat;
+        mEntityManager_.addModelRenderable(mCenterSphere_, modelRenderable);
+        mEntityManager_.addTransform(mCenterSphere_, {});
     }
     // hands
     {
         // left
-        auto* handLeftRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveLeft")
-        );
-        handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mLeftHandEntity_.addRenderable(handLeftRenderable);
+        {
+            mLeftHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveLeft"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-        // right
-        auto* handRightRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveRight")
-        );
-        handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mRightHandEntity_.addRenderable(handRightRenderable);
-    }
-    // plane
-    {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
-        );
-        mPlaneEntity_.addRenderable(modelRenderable);
-        mPlaneEntity_.setPosition({2,0,0});
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    }
-    {
-        auto* textRenderable = new clay::TextRenderable(
-            mApp_.getGraphicsContext(), "HELLO WORLD!", mApp_.getResources().getResource<clay::Font>("Runescape")
-        );
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mLeftHandEntity_, {});
+        }
+        {
+            // right
+            mRightHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveRight"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-        textRenderable->setScale({.01f,.01f,.01f});
-        textRenderable->setColor({1,1,0,1});
-        mTextEntity_.addRenderable(textRenderable);
-        mTextEntity_.setPosition({1,0,-2});
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mRightHandEntity_, {});
+        }
+    }
+    {
+        // plane/imgui
+        mPlaneEntity_ = mEntityManager_.createEntity();
+
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
+        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {2,0,0};
+        transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        mEntityManager_.addTransform(mPlaneEntity_, transform);
+    }
+    {
+        // Text
+        mTextEntity_ = mEntityManager_.createEntity();
+        clay::ecs::TextRenderable text;
+        text.initialize(
+            mApp_.getGraphicsContext(),
+            "HELLO WORLD",
+            &mApp_.getResources()[mApp_.getResources().getHandle<clay::Font>("Runescape")]
+        );
+        text.mScale_ = {.01f,.01f,.01f};
+        text.mColor_ = {1,1,0,1};
+        mEntityManager_.addTextRenderable(mTextEntity_, text);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {1,0,-2};
+        mEntityManager_.addTransform(mTextEntity_, transform);
     }
 }
 
@@ -125,61 +204,54 @@ void SandboxScene::update(float dt) {
 
     {
         // update left hand
-        mLeftHandEntity_.setOrientation(cameraOrientation * leftHandOrientation);
-        mLeftHandEntity_.setPosition(leftHandPosition);
+        mEntityManager_.mTransforms[mLeftHandEntity_].mOrientation_ = cameraOrientation * leftHandOrientation;
+        mEntityManager_.mTransforms[mLeftHandEntity_].mPosition_ = leftHandPosition;
     }
     {
         // update right hand
-        mRightHandEntity_.setOrientation(cameraOrientation * rightHandOrientation);
-        mRightHandEntity_.setPosition(rightHandPosition);
+        mEntityManager_.mTransforms[mRightHandEntity_].mOrientation_ = cameraOrientation * rightHandOrientation;
+        mEntityManager_.mTransforms[mRightHandEntity_].mPosition_ = rightHandPosition;
 
         // highlight sphere if right hand is pointing at it
-        const auto targetPosition = mTexturedSphere_.getPosition();
+        const auto targetPosition = mEntityManager_.mTransforms[mTexturedSphere_].mPosition_;
         const glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), targetPosition);
 
         const glm::vec3 rightHandForward = glm::normalize(rightHandOrientation * cameraOrientation * glm::vec3{0, 0, -1});
 
         if (clay::utils::isRayIntersectingSphere(rightHandPosition, rightHandForward, targetPosition, 0.5)) {
-            mHighLight = true;
+            mHighLight_ = true;
         } else {
-            mHighLight = false;
+            mHighLight_ = false;
         }
     }
-    // rotate sphere
-    mTexturedSphere_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    mTexturedSphereStencil_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    mTextEntity_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    // rotate entities
+    mEntityManager_.mTransforms[mTexturedSphere_].mOrientation_ *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    mEntityManager_.mTransforms[mTexturedSphereStencil_].mOrientation_ *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    mEntityManager_.mTransforms[mTextEntity_].mOrientation_ *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    if (mHighLight_) {
+        mEntityManager_.mMetaData[mTexturedSphere_].enabled = false;
+        mEntityManager_.mMetaData[mTexturedSphereStencil_].enabled = true;
+        mEntityManager_.mMetaData[mTexturedSphereSolid_].enabled = true;
+    } else {
+        mEntityManager_.mMetaData[mTexturedSphere_].enabled = true;
+        mEntityManager_.mMetaData[mTexturedSphereStencil_].enabled = false;
+        mEntityManager_.mMetaData[mTexturedSphereSolid_].enabled = false;
+    }
 }
 
 void SandboxScene::render(VkCommandBuffer cmdBuffer) {
-    // update camera uniform
-
-    mCenterSphere_.render(cmdBuffer);
-    if (mHighLight) {
-        mTexturedSphereStencil_.render(cmdBuffer);
-        mTexturedSphereSolid_.render(cmdBuffer);
-    } else {
-        mTexturedSphere_.render(cmdBuffer);
-    }
-
-    mLeftHandEntity_.render(cmdBuffer);
-    mRightHandEntity_.render(cmdBuffer);
-    mPlaneEntity_.render(cmdBuffer);
-
-    mTextEntity_.render(cmdBuffer);
+    mEntityManager_.render(cmdBuffer);
 }
 
 void SandboxScene::assembleResources() {
-    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
-
-    mpBeepDeepAudio_ = mApp_.getResources().getResource<clay::Audio>("DeepBeep");
+    mpBeepDeepAudio_ = &mApp_.getResources()[mApp_.getResources().getHandle<clay::Audio>("DeepBeep")];
 }
 
 void SandboxScene::renderGUI(VkCommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 
-    // todo see if pointing at plane
     const auto& rightHandPose = ((clay::AppXR &) mApp_).getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
     const glm::quat rightHandOrientation(rightHandPose.orientation.w, rightHandPose.orientation.x, rightHandPose.orientation.y, rightHandPose.orientation.z);
     glm::vec3 rightHandPosition = glm::vec3(rightHandPose.position.x,rightHandPose.position.y,rightHandPose.position.z);
@@ -195,22 +267,22 @@ void SandboxScene::renderGUI(VkCommandBuffer cmdBuffer) {
     glm::vec3 rayOrigin = rightHandPosition;
     glm::vec3 rayDir = rightHandForward;
 
-    glm::vec3 normal = glm::normalize(mPlaneEntity_.getOrientation() * glm::vec3{0, 1, 0});
+
+    const glm::vec3 normal = glm::normalize(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_ * glm::vec3{0, 1, 0});
 
     float denominator = glm::dot(normal, rayDir);
 
     ImVec2 calMousePos = {0,0};
 
     if (glm::abs(denominator) > 1e-6f) {
-        glm::vec3 planeToRay = mPlaneEntity_.getPosition() - rayOrigin;
+        glm::vec3 planeToRay = mEntityManager_.mTransforms[mPlaneEntity_].mPosition_ - rayOrigin;
         float t = glm::dot(planeToRay, normal) / denominator;
 
         if (t > 0.0f) {
             glm::vec3 intersectPoint = rayOrigin + t * rayDir;
 
-            glm::mat4 rotationMatrix = glm::mat4_cast(mPlaneEntity_.getOrientation());
-            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPlaneEntity_.getPosition());
-
+            glm::mat4 rotationMatrix = glm::mat4_cast(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_);
+            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mEntityManager_.mTransforms[mPlaneEntity_].mPosition_);
 
             float planeMinX = -0.5f, planeMaxX = 0.5f; // Plane bounds in local space
             float planeMinY = -0.5f, planeMaxY = 0.5f;
@@ -334,7 +406,7 @@ void SandboxScene::renderGUI(VkCommandBuffer cmdBuffer) {
     ImGui::BeginGroup();
     if (ImGui::BeginListBox("##Scenes")) {
         for (unsigned int i = 0; i < ((DemoAppXR&)mApp_).mSceneDetails_.size(); ++i) {
-            std::string elementName = "Entity " + ((DemoAppXR&)mApp_).mSceneDetails_[i].mName_;
+            std::string elementName = ((DemoAppXR&)mApp_).mSceneDetails_[i].mName_;
             if (ImGui::Selectable(elementName.c_str(), i == mSelectedSceneIdx)) {
                 mSelectedSceneIdx = i;
             }
@@ -365,4 +437,3 @@ void SandboxScene::renderGUI(VkCommandBuffer cmdBuffer) {
 }
 
 void SandboxScene::destroyResources() {}
-

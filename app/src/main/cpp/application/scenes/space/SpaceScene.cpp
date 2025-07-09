@@ -1,5 +1,3 @@
-// clay
-#include <clay/entity/render/ModelRenderable.h>
 // project
 #include "application/DemoAppXR.h"
 // class
@@ -7,6 +5,11 @@
 
 SpaceScene::SpaceScene(clay::BaseApp& app)
     : clay::BaseScene(app),
+      mEntityManager_(app.getGraphicsContext(), app.getResources()),
+      mSkyBox_(
+          mApp_.getResources()[mApp_.getResources().getHandle<clay::Mesh>("Sphere")],
+          mApp_.getResources()[mApp_.getResources().getHandle<clay::Material>("Stars")]
+      ),
       mCameraController_(mpFocusCamera_) {}
 
 SpaceScene::~SpaceScene() {}
@@ -19,68 +22,87 @@ void SpaceScene::initialize() {
     // hands
     {
         // left
-        auto* handLeftRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveLeft")
-        );
-        handLeftRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handLeftRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mLeftHandEntity_.addRenderable(handLeftRenderable);
+        {
+            mLeftHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveLeft"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-        // right
-        auto* handRightRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("GloveRight")
-        );
-        handRightRenderable->setScale({0.2f, 0.2f, 0.2f});
-        handRightRenderable->setColor({.95f, .674f, .411f, 1.0f});
-        mRightHandEntity_.addRenderable(handRightRenderable);
-    }
-    // imgui plane
-    {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("ImguiPlane")
-        );
-        mPlaneEntity_.addRenderable(modelRenderable);
-        mPlaneEntity_.setPosition({2,0,4});
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        mPlaneEntity_.getOrientation() *= glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    }
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mLeftHandEntity_, {});
+        }
+        {
+            // right
+            mRightHandEntity_ = mEntityManager_.createEntity();
+            clay::ecs::ModelRenderable modelRenderableLeft{};
+            modelRenderableLeft.modelHandle = mApp_.getResources().getHandle<clay::Model>(
+                "GloveRight"
+            );
+            // translation matrix
+            glm::mat4 translationMat = glm::translate(glm::mat4(1.0f), {0, 0, 0});
+            //rotation matrix
+            glm::mat4 rotationMat = glm::identity<glm::mat4>();
+            // scale matrix
+            glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {0.2f, 0.2f, 0.2f});
 
-    // sun
-    {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("Sun")
-        );
-        mSunSphere_.addRenderable(modelRenderable);
-        mSunSphere_.setPosition({0,0,0});
+            modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
+            modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
+            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addTransform(mRightHandEntity_, {});
+        }
     }
-    // earth
     {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("Earth")
-        );
-        mPlanetEntity_.addRenderable(modelRenderable);
-        mPlanetEntity_.setPosition({0 ,0, mPlanetOrbitRadius_});
-        mPlanetEntity_.setScale({.30f, .30f, .30f});
-    }
-    // moon
-    {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("Moon")
-        );
-        const auto planetPosition = mPlanetEntity_.getPosition();
+        // plane/imgui
+        mPlaneEntity_ = mEntityManager_.createEntity();
 
-        mMoonEntity_.addRenderable(modelRenderable);
-        mMoonEntity_.setPosition({planetPosition.x,planetPosition.y,planetPosition.z + mMoonOrbitRadius_});
-        mMoonEntity_.setScale({.15f, .15f, .15f});
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
+        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {2,0,4};
+        transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        mEntityManager_.addTransform(mPlaneEntity_, transform);
     }
-    // skybox
     {
-        auto* modelRenderable = new clay::ModelRenderable(
-            mApp_.getResources().getResource<clay::Model>("StarSkybox")
-        );
-        mSkyBoxEntity.addRenderable(modelRenderable);
-        mSkyBoxEntity.setPosition({0,0,0});
-        mSkyBoxEntity.setScale({1,1,1});
+        // sun
+        mSunSphere_ = mEntityManager_.createEntity();
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Sun");
+        mEntityManager_.addModelRenderable(mSunSphere_, modelRenderable);
+        mEntityManager_.addTransform(mSunSphere_, {});
+    }
+    {
+        // planet
+        mPlanetEntity_ = mEntityManager_.createEntity();
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Earth");
+        mEntityManager_.addModelRenderable(mPlanetEntity_, modelRenderable);
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {0,0, mPlanetOrbitRadius_};
+        transform.mScale_ = {.30f, .30f, .30f};
+        mEntityManager_.addTransform(mPlanetEntity_, transform);
+    }
+    {
+        // moon
+        mMoonEntity_ = mEntityManager_.createEntity();
+        clay::ecs::ModelRenderable modelRenderable{};
+        modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Moon");
+        mEntityManager_.addModelRenderable(mMoonEntity_, modelRenderable);
+        const auto planetPosition = mEntityManager_.mTransforms[mPlanetEntity_].mPosition_;
+
+        clay::ecs::Transform transform{};
+        transform.mPosition_ = {planetPosition.x, planetPosition.y,planetPosition.z + mMoonOrbitRadius_};
+        transform.mScale_ = {.15f, .15f, .15f};
+        mEntityManager_.addTransform(mMoonEntity_, transform);
     }
 }
 
@@ -116,25 +138,25 @@ void SpaceScene::update(float dt) {
 
     rightHandPosition = cameraPosition + rotatedRight;
     leftHandPosition = cameraPosition  + rotatedLeft;
-    mSkyBoxEntity.setOrientation(glm::conjugate(mpFocusCamera_->getOrientation()));
+    mSkyBox_.update(mpFocusCamera_->getOrientation(), dt);
+
     {
         // update left hand
-        mLeftHandEntity_.setOrientation(cameraOrientation * leftHandOrientation);
-        mLeftHandEntity_.setPosition(leftHandPosition);
+        mEntityManager_.mTransforms[mLeftHandEntity_].mOrientation_ = cameraOrientation * leftHandOrientation;
+        mEntityManager_.mTransforms[mLeftHandEntity_].mPosition_ = leftHandPosition;
     }
     {
         // update right hand
-        mRightHandEntity_.setOrientation(cameraOrientation * rightHandOrientation);
-        mRightHandEntity_.setPosition(rightHandPosition);
-
+        mEntityManager_.mTransforms[mRightHandEntity_].mOrientation_ = cameraOrientation * rightHandOrientation;
+        mEntityManager_.mTransforms[mRightHandEntity_].mPosition_ = rightHandPosition;
     }
 
     if (mUpdateSpace_) {
         glm::vec3 planetDiff;
-        glm::vec3 planetPosition = mPlanetEntity_.getPosition();
-        glm::vec3 moonPosition = mMoonEntity_.getPosition();
+        glm::vec3 planetPosition = mEntityManager_.mTransforms[mPlanetEntity_].mPosition_;
+        glm::vec3 moonPosition = mEntityManager_.mTransforms[mMoonEntity_].mPosition_;
         {
-            glm::vec3 orbitCenter = mSunSphere_.getPosition();
+            glm::vec3 orbitCenter = mEntityManager_.mTransforms[mSunSphere_].mPosition_;
             // Update planet orbit
             glm::vec3 relativePos = planetPosition - orbitCenter;
             // Calculate angle of rotation based on current position
@@ -182,31 +204,23 @@ void SpaceScene::update(float dt) {
             moonPosition = newMoonPos;
         }
 
-        mPlanetEntity_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        mPlanetEntity_.setPosition(planetPosition);
+        mEntityManager_.mTransforms[mPlanetEntity_].mOrientation_ *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        mEntityManager_.mTransforms[mPlanetEntity_].mPosition_ = planetPosition;
 
-        mMoonEntity_.getOrientation() *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        mMoonEntity_.setPosition(moonPosition);
+        mEntityManager_.mTransforms[mMoonEntity_].mOrientation_ *= glm::angleAxis(glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        mEntityManager_.mTransforms[mMoonEntity_].mPosition_ = moonPosition;
     }
 }
 
 void SpaceScene::render(VkCommandBuffer cmdBuffer) {
-    mSkyBoxEntity.render(cmdBuffer);
-    mPlanetEntity_.render(cmdBuffer);
-    mSunSphere_.render(cmdBuffer);
-    mMoonEntity_.render(cmdBuffer);
-
-    mPlaneEntity_.render(cmdBuffer);
-
-    mLeftHandEntity_.render(cmdBuffer);
-    mRightHandEntity_.render(cmdBuffer);
+    mSkyBox_.render(cmdBuffer);
+    mEntityManager_.render(cmdBuffer);
 }
 
 void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 
-    // todo see if pointing at plane
     const auto& rightHandPose = ((clay::AppXR &) mApp_).getInputHandler().getAimPose(clay::InputHandlerXR::Hand::RIGHT);
     const glm::quat rightHandOrientation(rightHandPose.orientation.w, rightHandPose.orientation.x, rightHandPose.orientation.y, rightHandPose.orientation.z);
     glm::vec3 rightHandPosition = glm::vec3(rightHandPose.position.x, rightHandPose.position.y, rightHandPose.position.z);
@@ -222,22 +236,21 @@ void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
     glm::vec3 rayOrigin = rightHandPosition;
     glm::vec3 rayDir = rightHandForward;
 
-    glm::vec3 normal = glm::normalize(mPlaneEntity_.getOrientation() * glm::vec3{0, 1, 0});
+    glm::vec3 normal = glm::normalize(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_ * glm::vec3{0, 1, 0});
 
     float denominator = glm::dot(normal, rayDir);
 
     ImVec2 calMousePos = {0,0};
 
     if (glm::abs(denominator) > 1e-6f) {
-        glm::vec3 planeToRay = mPlaneEntity_.getPosition() - rayOrigin;
+        glm::vec3 planeToRay = mEntityManager_.mTransforms[mPlaneEntity_].mPosition_ - rayOrigin;
         float t = glm::dot(planeToRay, normal) / denominator;
 
         if (t > 0.0f) {
             glm::vec3 intersectPoint = rayOrigin + t * rayDir;
 
-            glm::mat4 rotationMatrix = glm::mat4_cast(mPlaneEntity_.getOrientation());
-            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mPlaneEntity_.getPosition());
-
+            glm::mat4 rotationMatrix = glm::mat4_cast(mEntityManager_.mTransforms[mPlaneEntity_].mOrientation_);
+            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), mEntityManager_.mTransforms[mPlaneEntity_].mPosition_);
 
             float planeMinX = -0.5f, planeMaxX = 0.5f; // Plane bounds in local space
             float planeMinY = -0.5f, planeMaxY = 0.5f;
@@ -252,7 +265,6 @@ void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
             calMousePos = ImVec2(pixelX, pixelY);
         }
     }
-
 
     const float rightTriggerState = ((clay::AppXR &)mApp_).getInputHandler().getTriggerState(clay::InputHandlerXR::Hand::RIGHT);
 
@@ -360,7 +372,7 @@ void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
     ImGui::BeginGroup();
     if (ImGui::BeginListBox("##Scenes")) {
         for (unsigned int i = 0; i < ((DemoAppXR&)mApp_).mSceneDetails_.size(); ++i) {
-            std::string elementName = "Entity " +  ((DemoAppXR&)mApp_).mSceneDetails_[i].mName_;
+            std::string elementName =  ((DemoAppXR&)mApp_).mSceneDetails_[i].mName_;
             if (ImGui::Selectable(elementName.c_str(), i == mSelectedSceneIdx)) {
                 mSelectedSceneIdx = i;
             }
@@ -390,8 +402,6 @@ void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuffer);
 }
 
-void SpaceScene::assembleResources() {
-    mpResources_ = new clay::Resources(mApp_.getGraphicsContext());
-}
+void SpaceScene::assembleResources() {}
 
 void SpaceScene::destroyResources() {}
