@@ -23,6 +23,10 @@ Similar to Sandbox scene but instead, A nature scene is rendered.
 Update Submodules
 - `git submodule update --init --recursive`
 
+Apply fix for physx
+`cd thirdparty/ClayEngineVK`
+`patch -p0 -i patches/physx_fixes.patch`
+
 compile shaders
 - `./res/compile_shaders.bat`
 

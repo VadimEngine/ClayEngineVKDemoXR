@@ -158,12 +158,12 @@ void FarmScene::update(float dt) {
     }
 }
 
-void FarmScene::render(VkCommandBuffer cmdBuffer) {
+void FarmScene::render(vk::CommandBuffer cmdBuffer) {
     mSkyBox_.render(cmdBuffer);
     mEntityManager_.render(cmdBuffer);
 }
 
-void FarmScene::renderGUI(VkCommandBuffer cmdBuffer) {
+void FarmScene::renderGUI(vk::CommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 

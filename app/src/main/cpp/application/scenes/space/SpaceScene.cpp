@@ -212,12 +212,12 @@ void SpaceScene::update(float dt) {
     }
 }
 
-void SpaceScene::render(VkCommandBuffer cmdBuffer) {
+void SpaceScene::render(vk::CommandBuffer cmdBuffer) {
     mSkyBox_.render(cmdBuffer);
     mEntityManager_.render(cmdBuffer);
 }
 
-void SpaceScene::renderGUI(VkCommandBuffer cmdBuffer) {
+void SpaceScene::renderGUI(vk::CommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 

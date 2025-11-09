@@ -6,6 +6,9 @@
 #include "application/scenes/sandbox/SandboxScene.h"
 #include "application/scenes/space/SpaceScene.h"
 #include "application/scenes/farm/FarmScene.h"
+#include <PxPhysicsAPI.h>
+
+using namespace physx;
 
 
 void android_main(struct android_app* androidApp) {
@@ -44,5 +47,54 @@ void android_main(struct android_app* androidApp) {
         }
     );
     demoAppXr.setScene(new SandboxScene(demoAppXr));
+
+     {
+        // Initialize PhysX Foundation and Physics
+        static PxDefaultAllocator gAllocator;
+        static PxDefaultErrorCallback gErrorCallback;
+
+        PxFoundation* foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gAllocator
+                                                      , gErrorCallback
+        );
+        if (!foundation) {
+            LOG_E("PhysX Foundation creation failed");
+            //printf("PhysX Foundation creation failed!\n");
+            //return -1;
+        }
+
+        PxPhysics* physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation
+                                             , PxTolerancesScale());
+        if (!physics) {
+            LOG_E("PhysX Physics creation failed");
+            //printf("PhysX Physics creation failed!\n");
+            foundation->release();
+            //return -1;
+        }
+
+        // Create a simple scene
+        PxSceneDesc sceneDesc(physics->getTolerancesScale());
+        sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+        sceneDesc.cpuDispatcher = PxDefaultCpuDispatcherCreate(2);
+        sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+
+        PxScene* scene = physics->createScene(sceneDesc);
+        if (!scene) {
+            LOG_E("PhysX Scene creation failed");
+            //printf("PhysX Scene creation failed!\n");
+            physics->release();
+            foundation->release();
+            //return -1;
+        }
+        LOG_I("PhysX initialized successfully");
+        //printf("PhysX initialized successfully!\n");
+
+        // Cleanup
+        scene->release();
+        physics->release();
+        foundation->release();
+
+    }
+
+
     demoAppXr.Run();
 }

@@ -240,7 +240,7 @@ void SandboxScene::update(float dt) {
     }
 }
 
-void SandboxScene::render(VkCommandBuffer cmdBuffer) {
+void SandboxScene::render(vk::CommandBuffer cmdBuffer) {
     mEntityManager_.render(cmdBuffer);
 }
 
@@ -248,7 +248,7 @@ void SandboxScene::assembleResources() {
     mpBeepDeepAudio_ = &mApp_.getResources()[mApp_.getResources().getHandle<clay::Audio>("DeepBeep")];
 }
 
-void SandboxScene::renderGUI(VkCommandBuffer cmdBuffer) {
+void SandboxScene::renderGUI(vk::CommandBuffer cmdBuffer) {
     const uint32_t imguiWidth = 4128;
     const uint32_t imguiHeight = 2208;
 

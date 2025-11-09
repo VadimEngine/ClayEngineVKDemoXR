@@ -5,6 +5,12 @@ setlocal enabledelayedexpansion
 set SHADER_SRC=.\res\shaders
 set SHADER_OUT=.\app\src\main\assets\shaders
 
+:: Ensure output directory exists
+if not exist "%SHADER_OUT%" (
+    echo Creating output directory: %SHADER_OUT%
+    mkdir "%SHADER_OUT%"
+)
+
 :: List of shader names (no extension)
 set SHADERS=Flat Solid Text Texture
 
