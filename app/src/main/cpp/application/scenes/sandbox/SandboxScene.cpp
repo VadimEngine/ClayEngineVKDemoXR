@@ -34,11 +34,11 @@ void SandboxScene::initialize() {
             glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {1.0f, 1.0f, 1.0f});
 
             modelRenderablePlain.localModelMat = translationMat * rotationMat * scaleMat;
-            mEntityManager_.addModelRenderable(mTexturedSphere_, modelRenderablePlain);
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mTexturedSphere_, modelRenderablePlain);
             clay::ecs::Transform transform{};
             transform.mPosition_ = {-1,0,-2};
-            mEntityManager_.addTransform(mTexturedSphere_, transform);
-            mEntityManager_.addMetaData(mTexturedSphere_, {});
+            mEntityManager_.addComponent<clay::ecs::Transform>(mTexturedSphere_, transform);
+            mEntityManager_.addComponent<clay::ecs::EntityMetadata>(mTexturedSphere_, {});
         }
         {
             // stencil
@@ -54,11 +54,11 @@ void SandboxScene::initialize() {
             glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {1.0f, 1.0f, 1.0f});
 
             modelRenderablePlain.localModelMat = translationMat * rotationMat * scaleMat;
-            mEntityManager_.addModelRenderable(mTexturedSphereStencil_, modelRenderablePlain);
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mTexturedSphereStencil_, modelRenderablePlain);
             clay::ecs::Transform transform{};
             transform.mPosition_ = {-1,0,-2};
-            mEntityManager_.addTransform(mTexturedSphereStencil_, transform);
-            mEntityManager_.addMetaData(mTexturedSphereStencil_, {false});
+            mEntityManager_.addComponent<clay::ecs::Transform>(mTexturedSphereStencil_, transform);
+            mEntityManager_.addComponent<clay::ecs::EntityMetadata>(mTexturedSphereStencil_, {false});
         }
         {
             // solid
@@ -75,11 +75,11 @@ void SandboxScene::initialize() {
 
             modelRenderableSolid.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableSolid.mColor_ = {1.0f, 1.0f, 0.0f, 1.0f};
-            mEntityManager_.addModelRenderable(mTexturedSphereSolid_, modelRenderableSolid);
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mTexturedSphereSolid_, modelRenderableSolid);
             clay::ecs::Transform transform{};
             transform.mPosition_ = {-1,0,-2};
-            mEntityManager_.addTransform(mTexturedSphereSolid_, transform);
-            mEntityManager_.addMetaData(mTexturedSphereSolid_, {false});
+            mEntityManager_.addComponent<clay::ecs::Transform>(mTexturedSphereSolid_, transform);
+            mEntityManager_.addComponent<clay::ecs::EntityMetadata>(mTexturedSphereSolid_, {false});
         }
     }
     // solid sphere
@@ -96,8 +96,8 @@ void SandboxScene::initialize() {
         glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), {.1f, .1f, .1f});
 
         modelRenderable.localModelMat = translationMat * rotationMat * scaleMat;
-        mEntityManager_.addModelRenderable(mCenterSphere_, modelRenderable);
-        mEntityManager_.addTransform(mCenterSphere_, {});
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mCenterSphere_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mCenterSphere_, {});
     }
     // hands
     {
@@ -117,8 +117,8 @@ void SandboxScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mLeftHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mLeftHandEntity_, {});
         }
         {
             // right
@@ -136,8 +136,8 @@ void SandboxScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mRightHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mRightHandEntity_, {});
         }
     }
     {
@@ -146,27 +146,24 @@ void SandboxScene::initialize() {
 
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
-        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mPlaneEntity_, modelRenderable);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {2,0,0};
         transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        mEntityManager_.addTransform(mPlaneEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mPlaneEntity_, transform);
     }
     {
         // Text
         mTextEntity_ = mEntityManager_.createEntity();
         clay::ecs::TextRenderable text;
-        text.initialize(
-            mApp_.getGraphicsContext(),
-            "HELLO WORLD",
-            &mApp_.getResources()[mApp_.getResources().getHandle<clay::Font>("Runescape")]
-        );
+        text.setFont(&mApp_.getResources()[mApp_.getResources().getHandle<clay::Font>("Runescape")]);
+        text.setText(mApp_.getGraphicsContext(), "HELLO WORLD");
         text.mScale_ = {.01f,.01f,.01f};
         text.mColor_ = {1,1,0,1};
-        mEntityManager_.addTextRenderable(mTextEntity_, text);
+        mEntityManager_.addComponent<clay::ecs::TextRenderable>(mTextEntity_, text);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {1,0,-2};
-        mEntityManager_.addTransform(mTextEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mTextEntity_, transform);
     }
 }
 

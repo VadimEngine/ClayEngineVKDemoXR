@@ -27,7 +27,6 @@ public:
 
     clay::ecs::EntityManager mEntityManager_;
 
-    clay::SkyBox mSkyBox_;
     clay::ecs::Entity mLeftHandEntity_;
     clay::ecs::Entity mRightHandEntity_;
 

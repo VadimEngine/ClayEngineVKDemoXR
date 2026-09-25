@@ -22,9 +22,14 @@ set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -u ANati
 # Use XR version of clay
 set(CLAY_PLATFORM_XR ON CACHE BOOL "Set Platform to XR" FORCE)
 
+# Path to the ClayEngineVK source tree to build against. Defaults to the
+# shared main copy (Clay/ClayEngineVK). Override by passing
+# -DCLAY_ENGINE_DIR=... via externalNativeBuild.cmake.arguments in build.gradle.
+set(CLAY_ENGINE_DIR "${CMAKE_SOURCE_DIR}/../../../../../ClayEngineVK" CACHE PATH "Path to ClayEngineVK engine source")
+
 add_subdirectory(
-    ${CMAKE_SOURCE_DIR}/../../../../thirdparty/ClayEngineVK
-    ${CMAKE_BINARY_DIR}/thirdparty/ClayEngineVK
+    ${CLAY_ENGINE_DIR}
+    ${CMAKE_BINARY_DIR}/ClayEngineVK
 )
 
 # Link against ClayEngine

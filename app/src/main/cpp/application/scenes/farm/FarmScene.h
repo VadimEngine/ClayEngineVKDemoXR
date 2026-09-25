@@ -27,7 +27,6 @@ public:
     void destroyResources() override;
 
     clay::ecs::EntityManager mEntityManager_;
-    clay::SkyBox mSkyBox_;
 
     clay::ecs::Entity mSkyBoxEntity;
     clay::ecs::Entity mLeftHandEntity_;

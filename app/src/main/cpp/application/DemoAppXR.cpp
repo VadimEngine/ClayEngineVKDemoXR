@@ -49,45 +49,43 @@ void DemoAppXR::CreateResources() {
         loadFileToMemory_XR("shaders/Solid.frag.spv")
     );
 
-    clay::Resources::Handle<vk::Sampler> samplerHandle_Default;
-    clay::Resources::Handle<vk::Sampler> samplerHandle_Linear;
+    clay::Handle<vk::Sampler> samplerHandle_Default;
+    clay::Handle<vk::Sampler> samplerHandle_Linear;
 
-    clay::Resources::Handle<clay::Texture> textureHandle_SandboxPreview;
-    clay::Resources::Handle<clay::Texture> textureHandle_SpacePreview;
-    clay::Resources::Handle<clay::Texture> textureHandle_FarmPreview;
-    clay::Resources::Handle<clay::Texture> textureHandle_VTexture;
-    clay::Resources::Handle<clay::Texture> textureHandle_Solid;
-    clay::Resources::Handle<clay::Texture> textureHandle_Sun;
-    clay::Resources::Handle<clay::Texture> textureHandle_Moon;
-    clay::Resources::Handle<clay::Texture> textureHandle_Earth;
-    clay::Resources::Handle<clay::Texture> textureHandle_Stars;
-    clay::Resources::Handle<clay::Texture> textureHandle_Clouds;
+    clay::Handle<clay::Texture> textureHandle_SandboxPreview;
+    clay::Handle<clay::Texture> textureHandle_SpacePreview;
+    clay::Handle<clay::Texture> textureHandle_FarmPreview;
+    clay::Handle<clay::Texture> textureHandle_VTexture;
+    clay::Handle<clay::Texture> textureHandle_Solid;
+    clay::Handle<clay::Texture> textureHandle_Sun;
+    clay::Handle<clay::Texture> textureHandle_Moon;
+    clay::Handle<clay::Texture> textureHandle_Earth;
+    clay::Handle<clay::Texture> textureHandle_Stars;
+    clay::Handle<clay::Texture> textureHandle_Clouds;
 
-    // todo replace with handle (no r)
-    clay::Resources::Handle<clay::Mesh> meshHandle_Sphere;
-    clay::Resources::Handle<clay::Mesh> meshHandle_Cube;
-    clay::Resources::Handle<clay::Mesh> meshHandle_Plane;
-    clay::Resources::Handle<clay::Mesh> meshHandle_GloveLeft;
-    clay::Resources::Handle<clay::Mesh> meshHandle_GloveRight;
+    clay::Handle<clay::Mesh> meshHandle_Sphere;
+    clay::Handle<clay::Mesh> meshHandle_Cube;
+    clay::Handle<clay::Mesh> meshHandle_Plane;
+    clay::Handle<clay::Mesh> meshHandle_GloveLeft;
+    clay::Handle<clay::Mesh> meshHandle_GloveRight;
 
-    clay::Resources::Handle<clay::PipelineResource> pipelineHandle_TextureDepth;
-    clay::Resources::Handle<clay::PipelineResource> pipelineHandle_TextureDepthStencil;
-    clay::Resources::Handle<clay::PipelineResource> pipelineHandle_TextureNoDepth;
-    clay::Resources::Handle<clay::PipelineResource> pipelineHandle_Flat;
-    clay::Resources::Handle<clay::PipelineResource> pipelineHandle_SolidStencil;
+    clay::Handle<clay::PipelineResource> pipelineHandle_TextureDepth;
+    clay::Handle<clay::PipelineResource> pipelineHandle_TextureDepthStencil;
+    clay::Handle<clay::PipelineResource> pipelineHandle_TextureNoDepth;
+    clay::Handle<clay::PipelineResource> pipelineHandle_Flat;
+    clay::Handle<clay::PipelineResource> pipelineHandle_SolidStencil;
 
-    clay::Resources::Handle<clay::Material> materialHandle_VTexture;
-    clay::Resources::Handle<clay::Material> materialHandle_VTextureStencil;
-    clay::Resources::Handle<clay::Material> materialHandle_Solid;
-    clay::Resources::Handle<clay::Material> materialHandle_Sun;
-    clay::Resources::Handle<clay::Material> materialHandle_Moon;
-    clay::Resources::Handle<clay::Material> materialHandle_Earth;
-    clay::Resources::Handle<clay::Material> materialHandle_Stars;
-    clay::Resources::Handle<clay::Material> materialHandle_CloudySky;
-    clay::Resources::Handle<clay::Material> materialHandle_Flat;
-    clay::Resources::Handle<clay::Material> materialHandle_SolidStencil;
-    clay::Resources::Handle<clay::Material> materialHandle_Imgui;
-
+    clay::Handle<clay::Material> materialHandle_VTexture;
+    clay::Handle<clay::Material> materialHandle_VTextureStencil;
+    clay::Handle<clay::Material> materialHandle_Solid;
+    clay::Handle<clay::Material> materialHandle_Sun;
+    clay::Handle<clay::Material> materialHandle_Moon;
+    clay::Handle<clay::Material> materialHandle_Earth;
+    clay::Handle<clay::Material> materialHandle_Stars;
+    clay::Handle<clay::Material> materialHandle_CloudySky;
+    clay::Handle<clay::Material> materialHandle_Flat;
+    clay::Handle<clay::Material> materialHandle_SolidStencil;
+    clay::Handle<clay::Material> materialHandle_Imgui;
 
     {
         // load font
@@ -913,147 +911,147 @@ void DemoAppXR::CreateResources() {
     // Models
     // solid sphere
     {
-       clay::Model solidSphereModel(*mpGraphicsContext_);
+       clay::Model solidSphereModel;
         solidSphereModel.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_Solid],
+            meshHandle_Sphere,
+            materialHandle_Solid,
             glm::mat4(1),
         });
         mResources_.addResource(std::move(solidSphereModel), "SolidSphere");
     }
     // v sphere
     {
-       clay::Model vSphereModel(*mpGraphicsContext_);
+       clay::Model vSphereModel;
         vSphereModel.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_VTexture],
+            meshHandle_Sphere,
+            materialHandle_VTexture,
             glm::mat4(1),
         });
         mResources_.addResource(std::move(vSphereModel), "VSphere");
     }
     // v sphere-stencil
     {
-        clay::Model vSphereModel(*mpGraphicsContext_);
+        clay::Model vSphereModel;
 
         vSphereModel.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_VTextureStencil],
+            meshHandle_Sphere,
+            materialHandle_VTextureStencil,
           glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(vSphereModel), "VSphereStencil");
     }
     // v sphere solid highlight
     {
-        clay::Model vSphereModel(*mpGraphicsContext_);
+        clay::Model vSphereModel;
         vSphereModel.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_SolidStencil],
+            meshHandle_Sphere,
+            materialHandle_SolidStencil,
           glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(vSphereModel), "VSphereSolid");
     }
     // sun
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_Sun],
+            meshHandle_Sphere,
+            materialHandle_Sun,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(model), "Sun");
     }
     // moon
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_Moon],
+            meshHandle_Sphere,
+            materialHandle_Moon,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(model), "Moon");
     }
     // earth
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_Earth],
+            meshHandle_Sphere,
+            materialHandle_Earth,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(model), "Earth");
     }
     // skybox (star)
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_Stars],
+            meshHandle_Sphere,
+            materialHandle_Stars,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(model), "StarSkybox");
     }
     // skybox (cloudy)
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Sphere],
-            &mResources_[materialHandle_CloudySky],
+            meshHandle_Sphere,
+            materialHandle_CloudySky,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(model), "CloudySkybox");
     }
     // Hands
     {
-        clay::Model leftHandModel(*mpGraphicsContext_);
+        clay::Model leftHandModel;
         leftHandModel.addElement({
-            &mResources_[meshHandle_GloveLeft],
-            &mResources_[materialHandle_Flat],
+            meshHandle_GloveLeft,
+            materialHandle_Flat,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(leftHandModel), "GloveLeft");
 
-       clay::Model rightHandModel(*mpGraphicsContext_);
+       clay::Model rightHandModel;
         rightHandModel.addElement({
-            &mResources_[meshHandle_GloveRight],
-            &mResources_[materialHandle_Flat],
+            meshHandle_GloveRight,
+            materialHandle_Flat,
             glm::mat4(1),
         });
         mResources_.addResource<clay::Model>(std::move(rightHandModel), "GloveRight");
     }
     // create leaves model
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-             &mResources_[meshHandle_Sphere],
-             &mResources_[materialHandle_Flat],
+             meshHandle_Sphere,
+             materialHandle_Flat,
          });
         mResources_.addResource<clay::Model>(std::move(model), "TreeTop");
     }
     // create trunk model
     {
 
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-             &mResources_[meshHandle_Cube],
-             &mResources_[materialHandle_Flat],
+             meshHandle_Cube,
+             materialHandle_Flat,
          });
         mResources_.addResource<clay::Model>(std::move(model), "TreeTrunk");
     }
     // floor model
     {
-        clay::Model model(*mpGraphicsContext_);
+        clay::Model model;
         model.addElement({
-            &mResources_[meshHandle_Plane],
-            &mResources_[materialHandle_Flat],
+            meshHandle_Plane,
+            materialHandle_Flat,
          });
         mResources_.addResource<clay::Model>(std::move(model), "GrassFloor");
     }
     // imgui
     {
-        clay::Model imguiPlane(*mpGraphicsContext_);
+        clay::Model imguiPlane;
         imguiPlane.addElement({
-            &mResources_[meshHandle_Plane],
-            &mResources_[materialHandle_Imgui],
+            meshHandle_Plane,
+            materialHandle_Imgui,
             glm::mat4(1),
         });
         mResources_.addResource(std::move(imguiPlane), "ImguiPlane");

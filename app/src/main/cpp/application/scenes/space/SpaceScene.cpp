@@ -6,11 +6,12 @@
 SpaceScene::SpaceScene(clay::BaseApp& app)
     : clay::BaseScene(app),
       mEntityManager_(app.getGraphicsContext(), app.getResources()),
-      mSkyBox_(
-          mApp_.getResources()[mApp_.getResources().getHandle<clay::Mesh>("Sphere")],
-          mApp_.getResources()[mApp_.getResources().getHandle<clay::Material>("Stars")]
-      ),
-      mCameraController_(mpFocusCamera_) {}
+      mCameraController_(mpFocusCamera_) {
+    mEntityManager_.setSkybox(
+        mApp_.getResources().getHandle<clay::Mesh>("Sphere"),
+        mApp_.getResources().getHandle<clay::Material>("Stars")
+    );
+}
 
 SpaceScene::~SpaceScene() {}
 
@@ -37,8 +38,8 @@ void SpaceScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mLeftHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mLeftHandEntity_, {});
         }
         {
             // right
@@ -56,8 +57,8 @@ void SpaceScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mRightHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mRightHandEntity_, {});
         }
     }
     {
@@ -66,43 +67,43 @@ void SpaceScene::initialize() {
 
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
-        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mPlaneEntity_, modelRenderable);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {2,0,4};
         transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        mEntityManager_.addTransform(mPlaneEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mPlaneEntity_, transform);
     }
     {
         // sun
         mSunSphere_ = mEntityManager_.createEntity();
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Sun");
-        mEntityManager_.addModelRenderable(mSunSphere_, modelRenderable);
-        mEntityManager_.addTransform(mSunSphere_, {});
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mSunSphere_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mSunSphere_, {});
     }
     {
         // planet
         mPlanetEntity_ = mEntityManager_.createEntity();
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Earth");
-        mEntityManager_.addModelRenderable(mPlanetEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mPlanetEntity_, modelRenderable);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {0,0, mPlanetOrbitRadius_};
         transform.mScale_ = {.30f, .30f, .30f};
-        mEntityManager_.addTransform(mPlanetEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mPlanetEntity_, transform);
     }
     {
         // moon
         mMoonEntity_ = mEntityManager_.createEntity();
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("Moon");
-        mEntityManager_.addModelRenderable(mMoonEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mMoonEntity_, modelRenderable);
         const auto planetPosition = mEntityManager_.mTransforms[mPlanetEntity_].mPosition_;
 
         clay::ecs::Transform transform{};
         transform.mPosition_ = {planetPosition.x, planetPosition.y,planetPosition.z + mMoonOrbitRadius_};
         transform.mScale_ = {.15f, .15f, .15f};
-        mEntityManager_.addTransform(mMoonEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mMoonEntity_, transform);
     }
 }
 
@@ -138,7 +139,9 @@ void SpaceScene::update(float dt) {
 
     rightHandPosition = cameraPosition + rotatedRight;
     leftHandPosition = cameraPosition  + rotatedLeft;
-    mSkyBox_.update(mpFocusCamera_->getOrientation(), dt);
+    if (mEntityManager_.hasSkybox()) {
+        mEntityManager_.getSkybox()->update(mpFocusCamera_->getOrientation());
+    }
 
     {
         // update left hand
@@ -213,7 +216,6 @@ void SpaceScene::update(float dt) {
 }
 
 void SpaceScene::render(vk::CommandBuffer cmdBuffer) {
-    mSkyBox_.render(cmdBuffer);
     mEntityManager_.render(cmdBuffer);
 }
 

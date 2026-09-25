@@ -7,11 +7,12 @@
 FarmScene::FarmScene(clay::BaseApp& app)
     : clay::BaseScene(app),
       mEntityManager_(app.getGraphicsContext(), app.getResources()),
-      mSkyBox_(
-          mApp_.getResources()[mApp_.getResources().getHandle<clay::Mesh>("Sphere")],
-          mApp_.getResources()[mApp_.getResources().getHandle<clay::Material>("CloudySky")]
-      ),
-      mCameraController_(mpFocusCamera_) {}
+      mCameraController_(mpFocusCamera_) {
+    mEntityManager_.setSkybox(
+        mApp_.getResources().getHandle<clay::Mesh>("Sphere"),
+        mApp_.getResources().getHandle<clay::Material>("CloudySky")
+    );
+}
 
 FarmScene::~FarmScene() {}
 
@@ -35,8 +36,8 @@ void FarmScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mLeftHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mLeftHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mLeftHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mLeftHandEntity_, {});
         }
         {
             // right
@@ -54,8 +55,8 @@ void FarmScene::initialize() {
 
             modelRenderableLeft.localModelMat = translationMat * rotationMat * scaleMat;
             modelRenderableLeft.mColor_ = {.95f, .674f, .411f, 1.0f};
-            mEntityManager_.addModelRenderable(mRightHandEntity_, modelRenderableLeft);
-            mEntityManager_.addTransform(mRightHandEntity_, {});
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mRightHandEntity_, modelRenderableLeft);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mRightHandEntity_, {});
         }
     }
     {
@@ -64,11 +65,11 @@ void FarmScene::initialize() {
 
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("ImguiPlane");
-        mEntityManager_.addModelRenderable(mPlaneEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mPlaneEntity_, modelRenderable);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {2,0,0};
         transform.mOrientation_ = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        mEntityManager_.addTransform(mPlaneEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mPlaneEntity_, transform);
     }
     {
         // tree
@@ -78,11 +79,11 @@ void FarmScene::initialize() {
             clay::ecs::ModelRenderable modelRenderable{};
             modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("TreeTop");
             modelRenderable.mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
-            mEntityManager_.addModelRenderable(mTreeEntityTop_, modelRenderable);
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mTreeEntityTop_, modelRenderable);
             clay::ecs::Transform transform{};
             transform.mPosition_ = {0,1,0};
 
-            mEntityManager_.addTransform(mTreeEntityTop_, transform);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mTreeEntityTop_, transform);
         }
         {
             // trunk
@@ -90,11 +91,11 @@ void FarmScene::initialize() {
             clay::ecs::ModelRenderable modelRenderable{};
             modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("TreeTrunk");
             modelRenderable.mColor_ = {0.239, 0.141, 0.071, 1.0f};
-            mEntityManager_.addModelRenderable(mTreeEntityTrunk_, modelRenderable);
+            mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mTreeEntityTrunk_, modelRenderable);
             clay::ecs::Transform transform{};
             transform.mScale_ = {.1, 2, .1};
 
-            mEntityManager_.addTransform(mTreeEntityTrunk_, transform);
+            mEntityManager_.addComponent<clay::ecs::Transform>(mTreeEntityTrunk_, transform);
         }
     }
     {
@@ -103,11 +104,11 @@ void FarmScene::initialize() {
         clay::ecs::ModelRenderable modelRenderable{};
         modelRenderable.modelHandle = mApp_.getResources().getHandle<clay::Model>("GrassFloor");
         modelRenderable.mColor_ = {0.0f, 1.0f, 0.0f, 1.0f};
-        mEntityManager_.addModelRenderable(mFloorEntity_, modelRenderable);
+        mEntityManager_.addComponent<clay::ecs::ModelRenderable>(mFloorEntity_, modelRenderable);
         clay::ecs::Transform transform{};
         transform.mPosition_ = {0,-1,0};
         transform.mScale_ = {50,50,50};
-        mEntityManager_.addTransform(mFloorEntity_, transform);
+        mEntityManager_.addComponent<clay::ecs::Transform>(mFloorEntity_, transform);
     }
 }
 
@@ -133,7 +134,9 @@ void FarmScene::update(float dt) {
         headPose
     );
 
-    mSkyBox_.update(mpFocusCamera_->getOrientation(), dt);
+    if (mEntityManager_.hasSkybox()) {
+        mEntityManager_.getSkybox()->update(mpFocusCamera_->getOrientation());
+    }
 
     const glm::vec3 cameraPosition = mpFocusCamera_->getPosition();
     const glm::quat cameraOrientation = mpFocusCamera_->getOrientation();
@@ -159,7 +162,6 @@ void FarmScene::update(float dt) {
 }
 
 void FarmScene::render(vk::CommandBuffer cmdBuffer) {
-    mSkyBox_.render(cmdBuffer);
     mEntityManager_.render(cmdBuffer);
 }
 
